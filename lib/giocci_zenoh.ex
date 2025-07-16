@@ -72,7 +72,7 @@ defmodule GiocciZenoh do
   def start_link(relay_name) do
     ## ClientのZenohセッションを起動
     client_name = @client_name
-    {:ok, session} = Zenohex.open()
+    {:ok, session} = Zenohex.Session.open()
     ## subのキーをたてる
     {:ok, subscriber} =
       Zenohex.Session.declare_subscriber(session, "from/" <> relay_name <> "/to/" <> client_name)

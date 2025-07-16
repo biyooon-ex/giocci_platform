@@ -1,10 +1,6 @@
 defmodule GiocciZenoh.Detect do
-  alias Zenohex.Config
-  alias Zenohex.Config.Connect
-  alias Zenohex.Config.Scouting
   alias Zenohex.Session
   alias Zenohex.Publisher
-  alias Zenohex.Subscriber
 
   def detect(session, relay, engine, magic_number, payload, receive_timeout) do
     pub_key_prefix = Application.fetch_env!(:giocci, :pub_key_prefix)
@@ -18,35 +14,21 @@ defmodule GiocciZenoh.Detect do
     sub_key =
       sub_key_prefix <> engine_name <> "/detected_data/" <> Integer.to_string(magic_number)
 
-    {:ok, subscriber} = Session.declare_subscriber(session, sub_key)
+    {:ok, _subscriber} = Session.declare_subscriber(session, sub_key)
 
     Publisher.put(publisher, payload)
 
-    case Subscriber.recv_timeout(subscriber, receive_timeout * 1_000) do
-      {:ok, sample} -> {:ok, :erlang.binary_to_term(sample.value)}
-      {:error, :timeout} -> {:error, "Zenoh Timeout"}
-      {:error, reason} -> {:error, Exception.message(reason)}
+    receive do
+      %Zenohex.Sample{key_expr: ^sub_key} = sample ->
+        {:ok, :erlang.binary_to_term(sample.payload)}
+    after
+      receive_timeout -> {:error, "Zenoh Timeout"}
     end
   end
 
   def create_zenoh_session() do
-    relays = Application.fetch_env!(:biyooon_detect_frontend_phx, :relays)
-
-    # Set endpoint config
-    config =
-      %Config{
-        connect: %Connect{endpoints: get_zrouter(relays)},
-        scouting: %Scouting{delay: 200}
-      }
-
     # Open session
-    {:ok, session} = Zenohex.open(config)
+    {:ok, session} = Session.open()
     %{:session => session}
-  end
-
-  defp get_zrouter(relays) do
-    relays
-    |> Map.values()
-    |> Enum.map(fn ip -> "tcp/#{ip}:7447" end)
   end
 end

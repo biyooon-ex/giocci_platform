@@ -29,6 +29,6 @@ defmodule GiocciZenoh.Detect do
   def create_zenoh_session() do
     # Open session
     {:ok, session} = Session.open()
-    %{:session => session}
+    session
   end
 end

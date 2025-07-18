@@ -155,16 +155,20 @@ defmodule GiocciZenoh do
 
   ## subを永続化する関数
   defp subscriber_loop(state) do
-    case Zenohex.Subscriber.recv_timeout(state.subscriber, 10_000) do
-      {:ok, sample} ->
-        state.callback.(state, sample)
-        send(state.id, :loop)
+    #    case Zenohex.Subscriber.recv_timeout(state.subscriber, 10_000) do
+    #      {:ok, sample} ->
+    #        state.callback.(state, sample)
+    #        send(state.id, :loop)
+    #
+    #      {:error, :timeout} ->
+    #        send(state.id, :loop)
+    #
+    #      {:error, error} ->
+    #        Logger.error("unexpected error #{inspect(error)}")
+    #    end
 
-      {:error, :timeout} ->
-        send(state.id, :loop)
-
-      {:error, error} ->
-        Logger.error("unexpected error #{inspect(error)}")
-    end
+    Logger.warning("Zenoh subscriber loop is not implemented yet.")
+    send(state.id, :loop)
+    {:noreply, state}
   end
 end

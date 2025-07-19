@@ -1,5 +1,6 @@
 defmodule GiocciZenoh.Detect do
   alias Zenohex.Session
+  alias Zenohex.Config
   alias Zenohex.Publisher
 
   def detect(session, relay, engine, magic_number, payload, receive_timeout) do
@@ -26,9 +27,14 @@ defmodule GiocciZenoh.Detect do
     end
   end
 
-  def create_zenoh_session() do
-    # Open session
-    {:ok, session} = Session.open()
+  def create_zenoh_session(relays_ip) do
+    config =
+      Config.default()
+      |> Config.update_in(["connect", "endpoints"], fn [] ->
+        Enum.map(relays_ip, fn ip -> "tcp/#{ip}:7447" end)
+      end)
+
+    {:ok, session} = Session.open(config)
     session
   end
 end

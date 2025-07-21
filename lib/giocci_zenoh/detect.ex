@@ -3,6 +3,7 @@ defmodule GiocciZenoh.Detect do
   alias Zenohex.Config
   alias Zenohex.Publisher
   alias Zenohex.Subscriber
+  alias Zenohex.Sample
 
   def detect(session, relay, engine, magic_number, payload, receive_timeout) do
     pub_key_prefix = Application.fetch_env!(:giocci, :pub_key_prefix)
@@ -22,7 +23,7 @@ defmodule GiocciZenoh.Detect do
     Publisher.undeclare(publisher)
 
     receive do
-      %Zenohex.Sample{key_expr: ^sub_key} = sample ->
+      %Sample{key_expr: ^sub_key} = sample ->
         Subscriber.undeclare(subscriber)
         {:ok, :erlang.binary_to_term(sample.payload)}
     after

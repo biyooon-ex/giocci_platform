@@ -31,14 +31,17 @@ defmodule GiocciZenoh.Detect do
     end
   end
 
-  def create_zenoh_session(relays_ip) do
+  def open_zenoh_session(relays_ip) do
     config =
       Config.default()
       |> Config.update_in(["connect", "endpoints"], fn [] ->
         Enum.map(relays_ip, fn ip -> "tcp/#{ip}:7447" end)
       end)
 
-    {:ok, session} = Session.open(config)
-    session
+    Session.open(config)
+  end
+
+  def close_zenoh_session(session) do
+    Session.close(session)
   end
 end

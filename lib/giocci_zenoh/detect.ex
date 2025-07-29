@@ -42,6 +42,9 @@ defmodule GiocciZenoh.Detect do
   end
 
   def close_zenoh_session(session) do
-    Session.close(session)
+    case Session.close(session) do
+      :ok -> :ok
+      {:error, reason} -> {:error, reason}
+    end
   end
 end

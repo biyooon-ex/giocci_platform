@@ -1,0 +1,8 @@
+services:
+  zenohd:
+    build: .
+    image: giocci/zenohd:local
+    ports:
+      - "7447:7447"
+      - "7446:7446/udp"
+    restart: unless-stopped

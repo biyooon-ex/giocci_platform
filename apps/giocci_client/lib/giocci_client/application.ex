@@ -7,8 +7,10 @@ defmodule GiocciClient.Application do
 
   @impl true
   def start(_type, _args) do
+    client_name = Application.fetch_env!(:giocci_client, :client_name)
+
     children = [
-      {GiocciClient.Worker, []}
+      {GiocciClient.Worker, [client_name: client_name]}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

@@ -20,4 +20,6 @@ RUN apt-get update \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
 
+RUN mix local.hex --force
+
 CMD ["zenohd"]

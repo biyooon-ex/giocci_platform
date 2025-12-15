@@ -20,19 +20,24 @@ defmodule GiocciRelay.Worker do
     {:ok, register_client_queryable_id} =
       Zenohex.Session.declare_queryable(session_id, register_client_key)
 
+    save_module_key = Path.join(key_prefix, "giocci/save_module/client/#{relay_name}")
+
+    {:ok, save_module_queryable_id} =
+      Zenohex.Session.declare_queryable(session_id, save_module_key)
+
     {:ok,
      %{
        relay_name: relay_name,
        session_id: session_id,
        key_prefix: key_prefix,
        register_client_queryable_id: register_client_queryable_id,
-       register_client_key: register_client_key
+       register_client_key: register_client_key,
+       save_module_queryable_id: save_module_queryable_id,
+       save_module_key: save_module_key
      }}
   end
 
-  @doc """
-  for GiocciClient.register_client/2
-  """
+  # for GiocciClient.register_client/2
   def handle_info(
         %Zenohex.Query{key_expr: register_client_key, payload: payload, zenoh_query: zenoh_query},
         %{register_client_key: register_client_key} = state
@@ -54,5 +59,45 @@ defmodule GiocciRelay.Worker do
       result = {:error, :invalid_erlang_binary}
       :ok = Zenohex.Query.reply(zenoh_query, register_client_key, :erlang.term_to_binary(result))
       {:noreply, state}
+  end
+
+  # for GiocciClient.save_module/3
+  def handle_info(
+        %Zenohex.Query{key_expr: save_module_key, payload: payload, zenoh_query: zenoh_query},
+        %{save_module_key: save_module_key} = state
+      ) do
+    session_id = state.session_id
+    key_prefix = state.key_prefix
+    engine_name = ""
+
+    key = Path.join(key_prefix, "giocci/save_module/relay/#{engine_name}")
+
+    result =
+      case :erlang.binary_to_term(payload) do
+        %{timeout: timeout} ->
+          case Zenohex.Session.get(session_id, key, timeout, payload: payload) do
+            {:ok, [%Zenohex.Sample{payload: payload}]} ->
+              case :erlang.binary_to_term(payload) do
+                :ok -> :ok
+                _ -> {:error, "GiocciEngine returned invalid payload"}
+              end
+
+            {:error, :timeout} ->
+              {:error, :timeout}
+
+            {:error, reason} ->
+              {:error, "Zenohex unexpected error: #{inspect(reason)}"}
+
+            error ->
+              {:error, "Unexpected error: #{inspect(error)}"}
+          end
+
+        _ ->
+          {:error, "GiocciClient.save_module/3 invalid payload"}
+      end
+
+    :ok = Zenohex.Query.reply(zenoh_query, save_module_key, :erlang.term_to_binary(result))
+
+    {:noreply, state}
   end
 end

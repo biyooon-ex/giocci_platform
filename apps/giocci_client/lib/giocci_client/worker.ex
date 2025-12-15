@@ -84,7 +84,10 @@ defmodule GiocciClient.Worker do
     timeout = Keyword.get(opts, :timeout, 100)
 
     payload =
-      %{module_object_code: :code.get_object_code(module)}
+      %{
+        module_object_code: :code.get_object_code(module),
+        timeout: timeout
+      }
       |> :erlang.term_to_binary()
 
     result =
@@ -92,6 +95,7 @@ defmodule GiocciClient.Worker do
         {:ok, [%Zenohex.Sample{payload: payload}]} ->
           case :erlang.binary_to_term(payload) do
             :ok -> :ok
+            {:error, reason} -> {:error, reason}
           end
 
         {:error, :timeout} ->

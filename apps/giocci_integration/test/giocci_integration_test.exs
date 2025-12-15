@@ -23,5 +23,6 @@ defmodule GiocciIntegrationTest do
 
   test "" do
     assert :ok = GiocciClient.register_client(@relay_name)
+    assert {:error, _} = GiocciClient.save_module(@relay_name, GiocciIntegration)
   end
 end

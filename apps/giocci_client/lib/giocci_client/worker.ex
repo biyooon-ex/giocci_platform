@@ -29,6 +29,7 @@ defmodule GiocciClient.Worker do
 
   def init(args) do
     client_name = Keyword.fetch!(args, :client_name)
+    key_prefix = Keyword.get(args, :key_prefix, "")
 
     {:ok, session_id} =
       Zenohex.Config.default()
@@ -39,7 +40,7 @@ defmodule GiocciClient.Worker do
      %{
        client_name: client_name,
        session_id: session_id,
-       key_prefix: ""
+       key_prefix: key_prefix
      }}
   end
 

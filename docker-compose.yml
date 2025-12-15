@@ -2,6 +2,9 @@ services:
   zenohd:
     build: .
     image: ghcr.io/pojiro/giocci_zenohd:1.6.2
+    working_dir: /root/giocci
+    volumes:
+      - .:/root/giocci
     ports:
       - "7447:7447"
       - "7446:7446/udp"

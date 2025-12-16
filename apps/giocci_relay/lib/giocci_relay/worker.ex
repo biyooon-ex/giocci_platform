@@ -31,6 +31,11 @@ defmodule GiocciRelay.Worker do
     {:ok, save_module_queryable_id} =
       Zenohex.Session.declare_queryable(session_id, save_module_key)
 
+    inquiry_engine_key = Path.join(key_prefix, "giocci/inquiry_engine/client/#{relay_name}")
+
+    {:ok, inquiry_engine_queryable_id} =
+      Zenohex.Session.declare_queryable(session_id, inquiry_engine_key)
+
     {:ok,
      %{
        relay_name: relay_name,
@@ -41,7 +46,9 @@ defmodule GiocciRelay.Worker do
        register_client_queryable_id: register_client_queryable_id,
        register_client_key: register_client_key,
        save_module_queryable_id: save_module_queryable_id,
-       save_module_key: save_module_key
+       save_module_key: save_module_key,
+       inquiry_engine_queryable_id: inquiry_engine_queryable_id,
+       inquiry_engine_key: inquiry_engine_key
      }}
   end
 
@@ -129,6 +136,27 @@ defmodule GiocciRelay.Worker do
       end
 
     :ok = Zenohex.Query.reply(zenoh_query, save_module_key, :erlang.term_to_binary(result))
+
+    {:noreply, state}
+  end
+
+  # for GiocciClient.exec_func/3 step1
+  def handle_info(
+        %Zenohex.Query{key_expr: inquiry_engine_key, payload: payload, zenoh_query: zenoh_query},
+        %{inquiry_engine_key: inquiry_engine_key} = state
+      ) do
+    result =
+      case :erlang.binary_to_term(payload) do
+        %{mfargs: _mfargs} ->
+          # IMPLEMENT ME
+          engine_name = "giocci_engine"
+          {:ok, %{engine_name: engine_name}}
+
+        _ ->
+          {:error, "GiocciClient.exec_func/3 step1 invalid payload"}
+      end
+
+    :ok = Zenohex.Query.reply(zenoh_query, inquiry_engine_key, :erlang.term_to_binary(result))
 
     {:noreply, state}
   end

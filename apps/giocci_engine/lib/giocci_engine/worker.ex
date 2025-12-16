@@ -29,13 +29,20 @@ defmodule GiocciEngine.Worker do
     {:ok, save_module_queryable_id} =
       Zenohex.Session.declare_queryable(session_id, save_module_key)
 
+    exec_func_key = Path.join(key_prefix, "giocci/exec_func/client/#{engine_name}")
+
+    {:ok, exec_func_queryable_id} =
+      Zenohex.Session.declare_queryable(session_id, exec_func_key)
+
     {:ok,
      %{
        engine_name: engine_name,
        session_id: session_id,
        key_prefix: key_prefix,
        save_module_key: save_module_key,
-       save_module_queryable_id: save_module_queryable_id
+       save_module_queryable_id: save_module_queryable_id,
+       exec_func_key: exec_func_key,
+       exec_func_queryable_id: exec_func_queryable_id
      }}
   end
 
@@ -102,6 +109,38 @@ defmodule GiocciEngine.Worker do
       result = {:error, :invalid_erlang_binary}
       Logger.error("#{state.engine_name} received invalid binary.")
       :ok = Zenohex.Query.reply(zenoh_query, save_module_key, :erlang.term_to_binary(result))
+      {:noreply, state}
+  end
+
+  # for GiocciClient.exec_func/3
+  def handle_info(
+        %Zenohex.Query{key_expr: exec_func_key, payload: payload, zenoh_query: zenoh_query},
+        %{exec_func_key: exec_func_key} = state
+      ) do
+    engine_name = state.engine_name
+
+    result =
+      case :erlang.binary_to_term(payload) do
+        %{mfargs: {m, f, args}} ->
+          {:ok, apply(m, f, args)}
+
+        invalid_term ->
+          Logger.error(
+            "#{engine_name} received invalid term #{inspect(invalid_term)} for exec_func."
+          )
+
+          {:error, "GiocciEngine received invalid term #{inspect(invalid_term)} for exec_func."}
+      end
+
+    :ok = Zenohex.Query.reply(zenoh_query, exec_func_key, :erlang.term_to_binary(result))
+    {:noreply, state}
+  rescue
+    UndefinedFunctionError ->
+      mfargs = :erlang.binary_to_term(payload)
+      result = {:error, "Cannot exec not saved func, #{inspect(mfargs)} "}
+      Logger.error("#{state.engine_name} cannot exec #{inspect(mfargs)}.")
+
+      :ok = Zenohex.Query.reply(zenoh_query, exec_func_key, :erlang.term_to_binary(result))
       {:noreply, state}
   end
 end

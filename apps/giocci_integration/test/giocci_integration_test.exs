@@ -31,5 +31,9 @@ defmodule GiocciIntegrationTest do
     assert :ok = GiocciEngine.register_engine(@relay_name)
     assert :ok = GiocciClient.register_client(@relay_name)
     assert :ok = GiocciClient.save_module(@relay_name, GiocciIntegration)
+    assert 3 = GiocciClient.exec_func(@relay_name, {GiocciIntegration, :add, [1, 2]})
+
+    assert {:error, _} =
+             GiocciClient.exec_func(@relay_name, {GiocciIntegration, :undefined_function, []})
   end
 end

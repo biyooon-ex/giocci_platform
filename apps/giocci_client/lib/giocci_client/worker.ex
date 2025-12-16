@@ -118,21 +118,22 @@ defmodule GiocciClient.Worker do
     key = Path.join(key_prefix, "giocci/inquiry_engine/client/#{relay_name}")
     timeout = Keyword.get(opts, :timeout, 100)
 
-    payload =
+    send_payload =
       %{mfargs: mfargs}
       |> :erlang.term_to_binary()
 
     result =
-      case Zenohex.Session.get(session_id, key, timeout, payload: payload) do
-        {:ok, [%Zenohex.Sample{payload: payload}]} ->
-          case :erlang.binary_to_term(payload) do
+      case Zenohex.Session.get(session_id, key, timeout, payload: send_payload) do
+        {:ok, [%Zenohex.Sample{payload: recv_payload}]} ->
+          case :erlang.binary_to_term(recv_payload) do
             {:ok, %{engine_name: engine_name}} ->
               key = Path.join(key_prefix, "giocci/exec_func/client/#{engine_name}")
 
-              case Zenohex.Session.get(session_id, key, timeout, payload: payload) do
-                {:ok, [%Zenohex.Sample{payload: payload}]} ->
-                  case :erlang.binary_to_term(payload) do
-                    :ok -> :ok
+              case Zenohex.Session.get(session_id, key, timeout, payload: send_payload) do
+                {:ok, [%Zenohex.Sample{payload: recv_payload}]} ->
+                  case :erlang.binary_to_term(recv_payload) do
+                    {:ok, result} -> result
+                    {:error, reason} -> {:error, reason}
                   end
 
                 {:error, :timeout} ->

@@ -34,6 +34,11 @@ defmodule GiocciEngine.Worker do
     {:ok, exec_func_queryable_id} =
       Zenohex.Session.declare_queryable(session_id, exec_func_key)
 
+    exec_func_async_key = Path.join(key_prefix, "giocci/exec_func_async/client/#{engine_name}")
+
+    {:ok, exec_func_async_subscriber_id} =
+      Zenohex.Session.declare_subscriber(session_id, exec_func_async_key)
+
     {:ok,
      %{
        engine_name: engine_name,
@@ -42,7 +47,9 @@ defmodule GiocciEngine.Worker do
        save_module_key: save_module_key,
        save_module_queryable_id: save_module_queryable_id,
        exec_func_key: exec_func_key,
-       exec_func_queryable_id: exec_func_queryable_id
+       exec_func_queryable_id: exec_func_queryable_id,
+       exec_func_async_key: exec_func_async_key,
+       exec_func_async_subscriber_id: exec_func_async_subscriber_id
      }}
   end
 
@@ -142,5 +149,49 @@ defmodule GiocciEngine.Worker do
 
       :ok = Zenohex.Query.reply(zenoh_query, exec_func_key, :erlang.term_to_binary(result))
       {:noreply, state}
+  end
+
+  # for GiocciClient.exec_func_async/4
+  def handle_info(
+        %Zenohex.Sample{key_expr: exec_func_async_key, payload: payload},
+        %{exec_func_async_key: exec_func_async_key} = state
+      ) do
+    engine_name = state.engine_name
+    session_id = state.session_id
+    key_prefix = state.key_prefix
+
+    try do
+      result =
+        case :erlang.binary_to_term(payload) do
+          %{mfargs: {m, f, args}, exec_id: exec_id, client_name: client_name} ->
+            {:ok,
+             %{
+               mfargs: {m, f, args},
+               exec_id: exec_id,
+               client_name: client_name,
+               result: apply(m, f, args)
+             }}
+
+          invalid_term ->
+            Logger.error(
+              "#{engine_name} received invalid term #{inspect(invalid_term)} for exec_func."
+            )
+
+            {:error, "GiocciEngine received invalid term #{inspect(invalid_term)} for exec_func."}
+        end
+
+      {:ok, %{client_name: client_name}} = result
+      key = Path.join(key_prefix, "giocci/exec_func_async/engine/#{client_name}")
+      :ok = Zenohex.Session.put(session_id, key, :erlang.term_to_binary(result))
+      {:noreply, state}
+    rescue
+      UndefinedFunctionError ->
+        mfargs = :erlang.binary_to_term(payload)
+        result = {:error, "Cannot exec not saved func, #{inspect(mfargs)} "}
+        Logger.error("#{state.engine_name} cannot exec #{inspect(mfargs)}.")
+
+        :ok = Zenohex.Session.put(session_id, exec_func_async_key, :erlang.term_to_binary(result))
+        {:noreply, state}
+    end
   end
 end

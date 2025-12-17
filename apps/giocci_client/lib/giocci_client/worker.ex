@@ -17,8 +17,8 @@ defmodule GiocciClient.Worker do
     GenServer.call(@worker_name, {:exec_func, relay_name, mfargs, opts})
   end
 
-  def exec_func_async(relay_name, mfargs, opts \\ []) do
-    GenServer.call(@worker_name, {:exec_func, relay_name, mfargs, opts})
+  def exec_func_async(relay_name, mfargs, server, opts \\ []) do
+    GenServer.call(@worker_name, {:exec_func_async, relay_name, mfargs, server, opts})
   end
 
   def start_link(args) do
@@ -163,7 +163,78 @@ defmodule GiocciClient.Worker do
     {:reply, result, state}
   end
 
-  def handle_call({:exec_func_async, relay_name, mfargs, opts}, _from, state) do
-    {:reply, :ok, state}
+  def handle_call({:exec_func_async, relay_name, mfargs, server, opts}, _from, state) do
+    client_name = state.client_name
+    session_id = state.session_id
+    key_prefix = state.key_prefix
+
+    key = Path.join(key_prefix, "giocci/inquiry_engine/client/#{relay_name}")
+    timeout = Keyword.get(opts, :timeout, 100)
+
+    exec_id = make_ref()
+
+    send_payload =
+      %{
+        mfargs: mfargs,
+        exec_id: exec_id,
+        client_name: client_name
+      }
+      |> :erlang.term_to_binary()
+
+    result =
+      case Zenohex.Session.get(session_id, key, timeout, payload: send_payload) do
+        {:ok, [%Zenohex.Sample{payload: recv_payload}]} ->
+          case :erlang.binary_to_term(recv_payload) do
+            {:ok, %{engine_name: engine_name}} ->
+              recv_key = Path.join(key_prefix, "giocci/exec_func_async/engine/#{client_name}")
+              send_key = Path.join(key_prefix, "giocci/exec_func_async/client/#{engine_name}")
+
+              with {:ok, subscriber_id} <-
+                     Zenohex.Session.declare_subscriber(session_id, recv_key),
+                   :ok <- Zenohex.Session.put(session_id, send_key, send_payload) do
+                GiocciClient.Store.put(exec_id, %{server: server, subscriber_id: subscriber_id})
+                :ok
+              else
+                {:error, reason} ->
+                  {:error, "Zenohex unexpected error: #{inspect(reason)}"}
+              end
+
+            {:error, reason} ->
+              {:error, "Giocci error: #{inspect(reason)}"}
+          end
+
+        {:error, :timeout} ->
+          {:error, :timeout}
+
+        {:error, reason} ->
+          {:error, "Zenohex unexpected error: #{inspect(reason)}"}
+
+        error ->
+          {:error, "Unexpected error: #{inspect(error)}"}
+      end
+
+    {:reply, result, state}
+  end
+
+  def handle_info(%Zenohex.Sample{payload: payload}, state) do
+    case :erlang.binary_to_term(payload) do
+      {:ok, %{exec_id: exec_id, result: result}} ->
+        with %{server: server, subscriber_id: subscriber_id} <- GiocciClient.Store.get(exec_id) do
+          send(server, {:giocci_client, result})
+          :ok = GiocciClient.Store.delete(exec_id)
+
+          case Zenohex.Subscriber.undeclare(subscriber_id) do
+            :ok -> :ok
+            {:error, reason} -> nil
+          end
+        else
+          nil -> nil
+        end
+
+      {:error, reason} ->
+        nil
+    end
+
+    {:noreply, state}
   end
 end

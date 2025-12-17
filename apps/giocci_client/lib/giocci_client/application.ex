@@ -11,6 +11,7 @@ defmodule GiocciClient.Application do
     key_prefix = Application.get_env(:giocci_client, :key_prefix, "")
 
     children = [
+      {GiocciClient.Store, []},
       {GiocciClient.Worker, [client_name: client_name, key_prefix: key_prefix]}
     ]
 

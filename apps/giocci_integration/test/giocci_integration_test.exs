@@ -35,5 +35,9 @@ defmodule GiocciIntegrationTest do
 
     assert {:error, _} =
              GiocciClient.exec_func(@relay_name, {GiocciIntegration, :undefined_function, []})
+
+    :ok = GiocciClient.exec_func_async(@relay_name, {GiocciIntegration, :add, [1, 2]}, self())
+
+    assert_receive {:giocci_client, 3}
   end
 end

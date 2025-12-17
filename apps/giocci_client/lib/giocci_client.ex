@@ -21,6 +21,7 @@ defmodule GiocciClient do
 
   @doc """
   """
-  @spec exec_func_async(String.t(), tuple(), keyword()) :: :ok | {:error, reason :: term()}
-  defdelegate exec_func_async(relay_name, mfargs, opts \\ []), to: GiocciClient.Worker
+  @spec exec_func_async(String.t(), tuple(), GenServer.server(), keyword()) ::
+          :ok | {:error, reason :: term()}
+  defdelegate exec_func_async(relay_name, mfargs, server, opts \\ []), to: GiocciClient.Worker
 end

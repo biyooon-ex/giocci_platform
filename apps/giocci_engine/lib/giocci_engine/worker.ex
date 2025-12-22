@@ -129,7 +129,7 @@ defmodule GiocciEngine.Worker do
     result =
       case :erlang.binary_to_term(payload) do
         %{mfargs: {m, f, args}} ->
-          {:ok, apply(m, f, args)}
+          apply(m, f, args)
 
         invalid_term ->
           Logger.error(

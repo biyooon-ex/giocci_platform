@@ -1,6 +1,8 @@
 defmodule GiocciRelay.Worker do
   use GenServer
 
+  require Logger
+
   @worker_name __MODULE__
 
   def start_link(args) do
@@ -54,110 +56,102 @@ defmodule GiocciRelay.Worker do
 
   # for GiocciEngine.register_engine/2
   def handle_info(
-        %Zenohex.Query{key_expr: register_engine_key, payload: payload, zenoh_query: zenoh_query},
+        %Zenohex.Query{key_expr: register_engine_key, payload: binary, zenoh_query: zenoh_query},
         %{register_engine_key: register_engine_key} = state
       ) do
     result =
-      case :erlang.binary_to_term(payload) do
-        %{engine_name: _engine_name} ->
-          # IMPLEMENT ME
-          :ok
-
-        _ ->
-          {:error, :invalid_payload}
+      with {:ok, %{engine_name: _engine_name}} <- decode(binary) do
+        # IMPLEMENT ME クライアントの登録
+        :ok
       end
 
-    :ok = Zenohex.Query.reply(zenoh_query, register_engine_key, :erlang.term_to_binary(result))
+    {:ok, binary} = encode(result)
+    :ok = Zenohex.Query.reply(zenoh_query, register_engine_key, binary)
+
     {:noreply, state}
-  rescue
-    ArgumentError ->
-      result = {:error, :invalid_erlang_binary}
-      :ok = Zenohex.Query.reply(zenoh_query, register_engine_key, :erlang.term_to_binary(result))
-      {:noreply, state}
   end
 
   # for GiocciClient.register_client/2
   def handle_info(
-        %Zenohex.Query{key_expr: register_client_key, payload: payload, zenoh_query: zenoh_query},
+        %Zenohex.Query{key_expr: register_client_key, payload: binary, zenoh_query: zenoh_query},
         %{register_client_key: register_client_key} = state
       ) do
     result =
-      case :erlang.binary_to_term(payload) do
-        %{client_name: _client_name} ->
-          # IMPLEMENT ME
-          :ok
-
-        _ ->
-          {:error, :invalid_payload}
+      with {:ok, %{client_name: _client_name}} <- decode(binary) do
+        # IMPLEMENT ME クライアントの登録
+        :ok
       end
 
-    :ok = Zenohex.Query.reply(zenoh_query, register_client_key, :erlang.term_to_binary(result))
+    {:ok, binary} = encode(result)
+    :ok = Zenohex.Query.reply(zenoh_query, register_client_key, binary)
+
     {:noreply, state}
-  rescue
-    ArgumentError ->
-      result = {:error, :invalid_erlang_binary}
-      :ok = Zenohex.Query.reply(zenoh_query, register_client_key, :erlang.term_to_binary(result))
-      {:noreply, state}
   end
 
   # for GiocciClient.save_module/3
   def handle_info(
-        %Zenohex.Query{key_expr: save_module_key, payload: payload, zenoh_query: zenoh_query},
+        %Zenohex.Query{key_expr: save_module_key, payload: binary, zenoh_query: zenoh_query},
         %{save_module_key: save_module_key} = state
       ) do
     session_id = state.session_id
     key_prefix = state.key_prefix
+    # IMPLEMENT ME 複数エンジンへの登録
     engine_name = "giocci_engine"
 
-    key = Path.join(key_prefix, "giocci/save_module/relay/#{engine_name}")
-
+    # IMPLEMENT ME Client が登録済みチェックか、client に payload 内で送らせる必要あり
+    # IMPLEMENT ME Relay に対するモジュール保存
     result =
-      case :erlang.binary_to_term(payload) do
-        %{timeout: timeout} ->
-          case Zenohex.Session.get(session_id, key, timeout, payload: payload) do
-            {:ok, [%Zenohex.Sample{payload: payload}]} ->
-              case :erlang.binary_to_term(payload) do
-                :ok -> :ok
-                _ -> {:error, "GiocciEngine returned invalid payload"}
-              end
-
-            {:error, :timeout} ->
-              {:error, :timeout}
-
-            {:error, reason} ->
-              {:error, "Zenohex unexpected error: #{inspect(reason)}"}
-
-            error ->
-              {:error, "Unexpected error: #{inspect(error)}"}
-          end
-
-        _ ->
-          {:error, "GiocciClient.save_module/3 invalid payload"}
+      with key <- Path.join(key_prefix, "giocci/save_module/relay/#{engine_name}"),
+           {:ok, %{timeout: timeout}} <- decode(binary),
+           {:ok, binary} <- zenohex_get(session_id, key, timeout, binary),
+           {:ok, :ok = _recv_term} <- decode(binary) do
+        :ok
       end
 
-    :ok = Zenohex.Query.reply(zenoh_query, save_module_key, :erlang.term_to_binary(result))
+    {:ok, binary} = encode(result)
+    :ok = Zenohex.Query.reply(zenoh_query, save_module_key, binary)
 
     {:noreply, state}
   end
 
   # for GiocciClient.exec_func/3 step1
   def handle_info(
-        %Zenohex.Query{key_expr: inquiry_engine_key, payload: payload, zenoh_query: zenoh_query},
+        %Zenohex.Query{key_expr: inquiry_engine_key, payload: binary, zenoh_query: zenoh_query},
         %{inquiry_engine_key: inquiry_engine_key} = state
       ) do
+    # IMPREMENT ME, select engine logic
     result =
-      case :erlang.binary_to_term(payload) do
-        %{mfargs: _mfargs} ->
-          # IMPLEMENT ME
-          engine_name = "giocci_engine"
-          {:ok, %{engine_name: engine_name}}
-
-        _ ->
-          {:error, "GiocciClient.exec_func/3 step1 invalid payload"}
+      with {:ok, %{mfargs: _mfargs}} <- decode(binary),
+           {:ok, engine_name} <- {:ok, "giocci_engine"} do
+        {:ok, %{engine_name: engine_name}}
       end
 
-    :ok = Zenohex.Query.reply(zenoh_query, inquiry_engine_key, :erlang.term_to_binary(result))
+    {:ok, binary} = encode(result)
+    :ok = Zenohex.Query.reply(zenoh_query, inquiry_engine_key, binary)
 
     {:noreply, state}
+  end
+
+  defp zenohex_get(session_id, key, timeout, payload) do
+    case Zenohex.Session.get(session_id, key, timeout, payload: payload) do
+      {:ok, [%Zenohex.Sample{payload: payload}]} ->
+        {:ok, payload}
+
+      {:error, :timeout} ->
+        {:error, :timeout}
+
+      {:error, reason} ->
+        {:error, "Zenohex.Session.get/4 error: #{inspect(reason)}"}
+    end
+  end
+
+  defp encode(term) do
+    {:ok, :erlang.term_to_binary(term)}
+  end
+
+  defp decode(payload) do
+    {:ok, :erlang.binary_to_term(payload)}
+  rescue
+    ArgumentError -> {:error, :decode_failed}
   end
 end

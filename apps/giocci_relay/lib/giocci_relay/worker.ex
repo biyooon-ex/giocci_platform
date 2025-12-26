@@ -50,7 +50,8 @@ defmodule GiocciRelay.Worker do
        save_module_queryable_id: save_module_queryable_id,
        save_module_key: save_module_key,
        inquiry_engine_queryable_id: inquiry_engine_queryable_id,
-       inquiry_engine_key: inquiry_engine_key
+       inquiry_engine_key: inquiry_engine_key,
+       registered_clients: []
      }}
   end
 
@@ -76,10 +77,14 @@ defmodule GiocciRelay.Worker do
         %Zenohex.Query{key_expr: register_client_key, payload: binary, zenoh_query: zenoh_query},
         %{register_client_key: register_client_key} = state
       ) do
-    result =
-      with {:ok, %{client_name: _client_name}} <- decode(binary) do
-        # IMPLEMENT ME クライアントの登録
-        :ok
+    registered_clients = state.registered_clients
+
+    {result, state} =
+      with {:ok, %{client_name: client_name}} <- decode(binary) do
+        registered_clients = [client_name | registered_clients] |> Enum.uniq()
+        {:ok, %{state | registered_clients: registered_clients}}
+      else
+        error -> {error, state}
       end
 
     {:ok, binary} = encode(result)
@@ -95,14 +100,16 @@ defmodule GiocciRelay.Worker do
       ) do
     session_id = state.session_id
     key_prefix = state.key_prefix
+    registered_clients = state.registered_clients
     # IMPLEMENT ME 複数エンジンへの登録
     engine_name = "giocci_engine"
 
-    # IMPLEMENT ME Client が登録済みチェックか、client に payload 内で送らせる必要あり
-    # IMPLEMENT ME Relay に対するモジュール保存
     result =
       with key <- Path.join(key_prefix, "giocci/save_module/relay/#{engine_name}"),
-           {:ok, %{timeout: timeout}} <- decode(binary),
+           {:ok, recv_term} <- decode(binary),
+           {:ok, {module_object_code, timeout, client_name}} <- extract_save_module(recv_term),
+           :ok <- ensure_client_registered(client_name, registered_clients),
+           :ok <- save_module(module_object_code),
            {:ok, binary} <- zenohex_get(session_id, key, timeout, binary),
            {:ok, :ok = _recv_term} <- decode(binary) do
         :ok
@@ -119,9 +126,13 @@ defmodule GiocciRelay.Worker do
         %Zenohex.Query{key_expr: inquiry_engine_key, payload: binary, zenoh_query: zenoh_query},
         %{inquiry_engine_key: inquiry_engine_key} = state
       ) do
+    registered_clients = state.registered_clients
     # IMPREMENT ME, select engine logic
     result =
-      with {:ok, %{mfargs: _mfargs}} <- decode(binary),
+      with {:ok, recv_term} <- decode(binary),
+           {:ok, {{m, _f, _args}, client_name}} <- extract_exec_func(recv_term),
+           :ok <- ensure_client_registered(client_name, registered_clients),
+           :ok <- ensure_module_saved(m),
            {:ok, engine_name} <- {:ok, "giocci_engine"} do
         {:ok, %{engine_name: engine_name}}
       end
@@ -153,5 +164,51 @@ defmodule GiocciRelay.Worker do
     {:ok, :erlang.binary_to_term(payload)}
   rescue
     ArgumentError -> {:error, :decode_failed}
+  end
+
+  defp extract_save_module(term) do
+    %{
+      module_object_code: module_object_code,
+      timeout: timeout,
+      client_name: client_name
+    } = term
+
+    {:ok, {module_object_code, timeout, client_name}}
+  rescue
+    MatchError -> {:error, :term_not_expected}
+  end
+
+  defp extract_exec_func(term) do
+    %{
+      mfargs: mfargs,
+      client_name: client_name
+    } = term
+
+    {:ok, {mfargs, client_name}}
+  rescue
+    MatchError -> {:error, :term_not_expected}
+  end
+
+  defp ensure_client_registered(client_name, registered_clients) do
+    if client_name in registered_clients do
+      :ok
+    else
+      {:error, :client_not_registered}
+    end
+  end
+
+  defp save_module({module, binary, filename}) do
+    case :code.load_binary(module, filename, binary) do
+      {:module, _module} -> :ok
+      error -> error
+    end
+  end
+
+  defp ensure_module_saved(module) do
+    if Code.ensure_loaded?(module) do
+      :ok
+    else
+      {:error, :module_not_saved}
+    end
   end
 end

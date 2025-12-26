@@ -51,6 +51,7 @@ defmodule GiocciRelay.Worker do
        save_module_key: save_module_key,
        inquiry_engine_queryable_id: inquiry_engine_queryable_id,
        inquiry_engine_key: inquiry_engine_key,
+       registered_engines: [],
        registered_clients: []
      }}
   end
@@ -60,10 +61,14 @@ defmodule GiocciRelay.Worker do
         %Zenohex.Query{key_expr: register_engine_key, payload: binary, zenoh_query: zenoh_query},
         %{register_engine_key: register_engine_key} = state
       ) do
-    result =
-      with {:ok, %{engine_name: _engine_name}} <- decode(binary) do
-        # IMPLEMENT ME クライアントの登録
-        :ok
+    registered_engines = state.registered_engines
+
+    {result, state} =
+      with {:ok, %{engine_name: engine_name}} <- decode(binary) do
+        registered_engines = [engine_name | registered_engines] |> Enum.uniq()
+        {:ok, %{state | registered_engines: registered_engines}}
+      else
+        error -> {error, state}
       end
 
     {:ok, binary} = encode(result)
@@ -100,19 +105,28 @@ defmodule GiocciRelay.Worker do
       ) do
     session_id = state.session_id
     key_prefix = state.key_prefix
+    registered_engines = state.registered_engines
     registered_clients = state.registered_clients
-    # IMPLEMENT ME 複数エンジンへの登録
-    engine_name = "giocci_engine"
 
     result =
-      with key <- Path.join(key_prefix, "giocci/save_module/relay/#{engine_name}"),
-           {:ok, recv_term} <- decode(binary),
+      with {:ok, recv_term} <- decode(binary),
            {:ok, {module_object_code, timeout, client_name}} <- extract_save_module(recv_term),
            :ok <- ensure_client_registered(client_name, registered_clients),
-           :ok <- save_module(module_object_code),
-           {:ok, binary} <- zenohex_get(session_id, key, timeout, binary),
-           {:ok, :ok = _recv_term} <- decode(binary) do
-        :ok
+           :ok <- save_module(module_object_code) do
+        results =
+          for engine_name <- registered_engines do
+            with key <- Path.join(key_prefix, "giocci/save_module/relay/#{engine_name}"),
+                 {:ok, binary} <- zenohex_get(session_id, key, timeout, binary),
+                 {:ok, :ok = _recv_term} <- decode(binary) do
+              :ok
+            end
+          end
+
+        if Enum.any?(results, &(&1 == :ok)) do
+          :ok
+        else
+          {:error, :save_module_failed}
+        end
       end
 
     {:ok, binary} = encode(result)

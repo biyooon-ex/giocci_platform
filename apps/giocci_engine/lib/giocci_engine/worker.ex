@@ -66,8 +66,8 @@ defmodule GiocciEngine.Worker do
       with key <- Path.join(key_prefix, "giocci/register/engine/#{relay_name}"),
            {:ok, binary} <- encode(send_term),
            {:ok, binary} <- zenohex_get(session_id, key, timeout, binary),
-           {:ok, :ok = _recv_term} <- decode(binary) do
-        :ok
+           {:ok, recv_term} <- decode(binary) do
+        recv_term
       end
 
     {:reply, result, state}
@@ -80,8 +80,7 @@ defmodule GiocciEngine.Worker do
       ) do
     result =
       with {:ok, recv_term} <- decode(binary),
-           {:ok, {module_object_code}} <- extract_save_module(recv_term),
-           :ok <- save_module(module_object_code) do
+           :ok <- save_module(recv_term) do
         :ok
       end
 
@@ -162,22 +161,23 @@ defmodule GiocciEngine.Worker do
     ArgumentError -> {:error, :decode_failed}
   end
 
-  defp extract_save_module(term) do
-    %{
-      module_object_code: module_object_code,
-      timeout: _timeout,
-      client_name: _client_name
-    } = term
-
-    {:ok, {module_object_code}}
-  rescue
-    MatchError -> {:error, :term_not_expected}
-  end
-
-  defp save_module({module, binary, filename}) do
+  defp save_module({module, binary, filename} = _module_object_code) do
     case :code.load_binary(module, filename, binary) do
       {:module, _module} -> :ok
       error -> error
+    end
+  end
+
+  defp save_module(module_object_code_list) when is_list(module_object_code_list) do
+    results =
+      for module_object_code <- module_object_code_list do
+        save_module(module_object_code)
+      end
+
+    if Enum.all?(results, &(&1 == :ok)) do
+      :ok
+    else
+      {:error, :save_module_failed}
     end
   end
 

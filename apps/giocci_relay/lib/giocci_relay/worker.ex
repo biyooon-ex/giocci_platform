@@ -61,10 +61,25 @@ defmodule GiocciRelay.Worker do
         %Zenohex.Query{key_expr: register_engine_key, payload: binary, zenoh_query: zenoh_query},
         %{register_engine_key: register_engine_key} = state
       ) do
+    session_id = state.session_id
+    key_prefix = state.key_prefix
     registered_engines = state.registered_engines
 
     {result, state} =
       with {:ok, %{engine_name: engine_name}} <- decode(binary) do
+        # WHY: using spawn
+        # register_engine/2 は同期呼び出しなので、zenohex_get で save_module するとデッドロックを起こす
+        # TODO: zenohex_get で同期呼び出ししなくても良いか確認する
+        spawn(fn ->
+          with key <- Path.join(key_prefix, "giocci/save_module/relay/#{engine_name}"),
+               {:ok, module_object_code_list} <- GiocciRelay.ModuleStore.get(),
+               {:ok, binary} <- encode(module_object_code_list),
+               {:ok, binary} <- zenohex_get(session_id, key, _timeout = 5000, binary),
+               {:ok, recv_term} <- decode(binary) do
+            recv_term
+          end
+        end)
+
         registered_engines = [engine_name | registered_engines] |> Enum.uniq()
         {:ok, %{state | registered_engines: registered_engines}}
       else
@@ -112,21 +127,17 @@ defmodule GiocciRelay.Worker do
       with {:ok, recv_term} <- decode(binary),
            {:ok, {module_object_code, timeout, client_name}} <- extract_save_module(recv_term),
            :ok <- ensure_client_registered(client_name, registered_clients),
-           :ok <- save_module(module_object_code) do
-        results =
-          for engine_name <- registered_engines do
-            with key <- Path.join(key_prefix, "giocci/save_module/relay/#{engine_name}"),
-                 {:ok, binary} <- zenohex_get(session_id, key, timeout, binary),
-                 {:ok, :ok = _recv_term} <- decode(binary) do
-              :ok
-            end
+           :ok <- GiocciRelay.ModuleStore.put(module_object_code) do
+        for engine_name <- registered_engines do
+          with key <- Path.join(key_prefix, "giocci/save_module/relay/#{engine_name}"),
+               {:ok, binary} <- encode(module_object_code),
+               {:ok, binary} <- zenohex_get(session_id, key, timeout, binary),
+               {:ok, recv_term} <- decode(binary) do
+            recv_term
           end
-
-        if Enum.any?(results, &(&1 == :ok)) do
-          :ok
-        else
-          {:error, :save_module_failed}
         end
+
+        :ok
       end
 
     {:ok, binary} = encode(result)
@@ -217,13 +228,6 @@ defmodule GiocciRelay.Worker do
     else
       # IMPREMENT ME, select engine logic
       {:ok, List.first(registered_engines)}
-    end
-  end
-
-  defp save_module({module, binary, filename}) do
-    case :code.load_binary(module, filename, binary) do
-      {:module, _module} -> :ok
-      error -> error
     end
   end
 end

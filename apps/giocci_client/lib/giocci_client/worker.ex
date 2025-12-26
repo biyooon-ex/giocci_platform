@@ -59,7 +59,8 @@ defmodule GiocciClient.Worker do
       with key <- Path.join(key_prefix, "giocci/register/client/#{relay_name}"),
            {:ok, binary} <- encode(send_term),
            {:ok, binary} <- zenohex_get(session_id, key, timeout, binary),
-           {:ok, :ok = _recv_term} <- decode(binary) do
+           {:ok, recv_term} <- decode(binary),
+           :ok <- recv_term do
         registered_relays = [relay_name | registered_relays] |> Enum.uniq()
         {:ok, %{state | registered_relays: registered_relays}}
       else
@@ -91,7 +92,7 @@ defmodule GiocciClient.Worker do
            {:ok, binary} <- encode(send_term),
            {:ok, binary} <- zenohex_get(session_id, key, timeout, binary),
            {:ok, recv_term} <- decode(binary) do
-        :ok = recv_term
+        recv_term
       end
 
     {:reply, result, state}

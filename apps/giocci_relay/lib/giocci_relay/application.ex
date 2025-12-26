@@ -11,6 +11,7 @@ defmodule GiocciRelay.Application do
     key_prefix = Application.get_env(:giocci_relay, :key_prefix, "")
 
     children = [
+      {GiocciRelay.ModuleStore, []},
       {GiocciRelay.Worker, [relay_name: relay_name, key_prefix: key_prefix]}
     ]
 

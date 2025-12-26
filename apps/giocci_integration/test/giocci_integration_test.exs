@@ -27,7 +27,7 @@ defmodule GiocciIntegrationTest do
     :ok
   end
 
-  test "" do
+  test "register_engine/1 before save_module/2" do
     assert :ok = GiocciEngine.register_engine(@relay_name)
     assert :ok = GiocciClient.register_client(@relay_name)
     assert :ok = GiocciClient.save_module(@relay_name, GiocciIntegration)
@@ -39,5 +39,12 @@ defmodule GiocciIntegrationTest do
     :ok = GiocciClient.exec_func_async(@relay_name, {GiocciIntegration, :add, [1, 2]}, self())
 
     assert_receive {:giocci_client, 3}
+  end
+
+  test "register_engine/1 after save_module/2" do
+    assert :ok = GiocciClient.register_client(@relay_name)
+    assert :ok = GiocciClient.save_module(@relay_name, GiocciIntegration)
+    assert :ok = GiocciEngine.register_engine(@relay_name)
+    assert 3 = GiocciClient.exec_func(@relay_name, {GiocciIntegration, :add, [1, 2]})
   end
 end

@@ -75,18 +75,14 @@ defmodule GiocciRelay.Worker do
 
     {result, state} =
       with {:ok, %{engine_name: engine_name}} <- decode(binary) do
-        # WHY: using spawn
-        # register_engine/2 は同期呼び出しなので、zenohex_get で save_module するとデッドロックを起こす
-        # TODO: zenohex_get で同期呼び出ししなくても良いか確認する
-        spawn(fn ->
-          with key <- Path.join(key_prefix, "giocci/save_module/relay/#{engine_name}"),
-               {:ok, module_object_code_list} <- GiocciRelay.ModuleStore.get(),
-               {:ok, binary} <- encode(module_object_code_list),
-               {:ok, binary} <- zenohex_get(session_id, key, _timeout = 5000, binary),
-               {:ok, recv_term} <- decode(binary) do
-            recv_term
-          end
-        end)
+        with key <- Path.join(key_prefix, "giocci/save_module/relay/#{engine_name}"),
+             {:ok, module_object_code_list} <- GiocciRelay.ModuleStore.get(),
+             {:ok, binary} <- encode(module_object_code_list) do
+          # WHY: using zenohex_put/3
+          #      Since GiocciEngine.register_engine/2 is a synchronous call,
+          #      we use the asynchronous zenohex_put/3 to avoid a deadlock.
+          zenohex_put(session_id, key, binary)
+        end
 
         registered_engines = [engine_name | registered_engines] |> Enum.uniq()
         {:ok, %{state | registered_engines: registered_engines}}
@@ -186,6 +182,16 @@ defmodule GiocciRelay.Worker do
 
       {:error, reason} ->
         {:error, "Zenohex.Session.get/4 error: #{inspect(reason)}"}
+    end
+  end
+
+  defp zenohex_put(session_id, key, payload) do
+    case Zenohex.Session.put(session_id, key, payload) do
+      :ok ->
+        :ok
+
+      {:error, reason} ->
+        {:error, "Zenohex.Session.put/4 error: #{inspect(reason)}"}
     end
   end
 

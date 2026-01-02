@@ -37,6 +37,9 @@ defmodule GiocciEngine.Worker do
     {:ok, save_module_queryable_id} =
       Zenohex.Session.declare_queryable(session_id, save_module_key)
 
+    {:ok, save_module_subscriber_id} =
+      Zenohex.Session.declare_subscriber(session_id, save_module_key)
+
     exec_func_key = Path.join(key_prefix, "giocci/exec_func/client/#{engine_name}")
 
     {:ok, exec_func_queryable_id} =
@@ -54,6 +57,7 @@ defmodule GiocciEngine.Worker do
        key_prefix: key_prefix,
        save_module_key: save_module_key,
        save_module_queryable_id: save_module_queryable_id,
+       save_module_subscriber_id: save_module_subscriber_id,
        exec_func_key: exec_func_key,
        exec_func_queryable_id: exec_func_queryable_id,
        exec_func_async_key: exec_func_async_key,
@@ -94,6 +98,17 @@ defmodule GiocciEngine.Worker do
 
     {:ok, binary} = encode(result)
     :ok = Zenohex.Query.reply(zenoh_query, save_module_key, binary)
+
+    {:noreply, state}
+  end
+
+  def handle_info(
+        %Zenohex.Sample{key_expr: save_module_key, payload: binary},
+        %{save_module_key: save_module_key} = state
+      ) do
+    with {:ok, recv_term} <- decode(binary) do
+      save_module(recv_term)
+    end
 
     {:noreply, state}
   end

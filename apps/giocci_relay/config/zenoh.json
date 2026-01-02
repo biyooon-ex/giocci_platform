@@ -1,0 +1,210 @@
+{
+  "access_control": {
+    "default_permission": "deny",
+    "enabled": false,
+    "policies": null,
+    "rules": null,
+    "subjects": null
+  },
+  "adminspace": {
+    "enabled": false,
+    "permissions": {
+      "read": true,
+      "write": false
+    }
+  },
+  "aggregation": {
+    "publishers": [],
+    "subscribers": []
+  },
+  "connect": {
+    "endpoints": ["tcp/192.168.0.95:7447"],
+    "exit_on_failure": null,
+    "retry": null,
+    "timeout_ms": null
+  },
+  "downsampling": [],
+  "id": null,
+  "listen": {
+    "endpoints": {
+      "peer": [
+        "tcp/[::]:0"
+      ],
+      "router": [
+        "tcp/[::]:7447"
+      ]
+    },
+    "exit_on_failure": null,
+    "retry": null,
+    "timeout_ms": null
+  },
+  "low_pass_filter": [],
+  "metadata": null,
+  "mode": "client",
+  "namespace": null,
+  "open": {
+    "return_conditions": {
+      "connect_scouted": null,
+      "declares": null
+    }
+  },
+  "plugins": {},
+  "plugins_loading": {
+    "enabled": false,
+    "search_dirs": [
+      {
+        "kind": "current_exe_parent",
+        "value": null
+      },
+      ".",
+      "~/.zenoh/lib",
+      "/opt/homebrew/lib",
+      "/usr/local/lib",
+      "/usr/lib"
+    ]
+  },
+  "qos": {
+    "network": [],
+    "publication": []
+  },
+  "queries_default_timeout": null,
+  "routing": {
+    "interests": { "timeout": null },
+    "peer": {
+      "linkstate": {
+        "transport_weights": []
+      },
+      "mode": null
+    },
+    "router": {
+      "linkstate": {
+        "transport_weights": []
+      },
+      "peers_failover_brokering": null
+    }
+  },
+  "scouting": {
+    "delay": null,
+    "gossip": {
+      "autoconnect": null,
+      "autoconnect_strategy": null,
+      "enabled": null,
+      "multihop": null,
+      "target": null
+    },
+    "multicast": {
+      "address": null,
+      "autoconnect": null,
+      "autoconnect_strategy": null,
+      "enabled": null,
+      "interface": null,
+      "listen": null,
+      "ttl": null
+    },
+    "timeout": null
+  },
+  "stats": {
+    "filters": []
+  },
+  "timestamping": {
+    "drop_future_timestamp": null,
+    "enabled": null
+  },
+  "transport": {
+    "auth": {
+      "pubkey": {
+        "key_size": null,
+        "known_keys_file": null,
+        "private_key_file": null,
+        "private_key_pem": null,
+        "public_key_file": null,
+        "public_key_pem": null
+      },
+      "usrpwd": {
+        "dictionary_file": null,
+        "password": null,
+        "user": null
+      }
+    },
+    "link": {
+      "protocols": null,
+      "rx": {
+        "buffer_size": 65535,
+        "max_message_size": 1073741824
+      },
+      "tcp": {
+        "so_rcvbuf": null,
+        "so_sndbuf": null
+      },
+      "tls": {
+        "close_link_on_expiration": null,
+        "connect_certificate": null,
+        "connect_private_key": null,
+        "enable_mtls": null,
+        "listen_certificate": null,
+        "listen_private_key": null,
+        "root_ca_certificate": null,
+        "so_rcvbuf": null,
+        "so_sndbuf": null,
+        "verify_name_on_connect": null
+      },
+      "tx": {
+        "batch_size": 65535,
+        "keep_alive": 4,
+        "lease": 10000,
+        "queue": {
+          "allocation": { "mode": "lazy" },
+          "batching": {
+            "enabled": true,
+            "time_limit": 1
+          },
+          "congestion_control": {
+            "block": { "wait_before_close": 5000000 },
+            "drop": {
+              "max_wait_before_drop_fragments": 50000,
+              "wait_before_drop": 1000
+            }
+          },
+          "size": {
+            "background": 2,
+            "control": 2,
+            "data": 2,
+            "data_high": 2,
+            "data_low": 2,
+            "interactive_high": 2,
+            "interactive_low": 2,
+            "real_time": 2
+          }
+        },
+        "sequence_number_resolution": "32bit",
+        "threads": 4
+      },
+      "unixpipe": { "file_access_mask": null }
+    },
+    "multicast": {
+      "compression": { "enabled": false },
+      "join_interval": 2500,
+      "max_sessions": 1000,
+      "qos": { "enabled": false }
+    },
+    "shared_memory": {
+      "enabled": true,
+      "mode": "lazy",
+      "transport_optimization": {
+        "enabled": true,
+        "message_size_threshold": 3072,
+        "pool_size": 16777216
+      }
+    },
+    "unicast": {
+      "accept_pending": 100,
+      "accept_timeout": 10000,
+      "compression": { "enabled": false },
+      "lowlatency": false,
+      "max_links": 1,
+      "max_sessions": 1000,
+      "open_timeout": 10000,
+      "qos": { "enabled": true }
+    }
+  }
+}

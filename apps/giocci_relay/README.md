@@ -19,14 +19,15 @@ Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_do
 and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
 be found at <https://hexdocs.pm/giocci_relay>.
 
-## How to build docker image
+## How to build/push docker image
 
 ```bash
-docker build --file Dockerfile --tag ghcr.io/pojiro/giocci_relay:0.1.0 ../../
+docker compose build giocci_relay
+docker compose push giocci_relay
 ```
 
 ## How to run docker container
 
 ```bash
-docker run --mount type=bind,src=$PWD/config/giocci_relay.exs,dst=/root/_build/prod/rel/giocci_relay/giocci_relay.exs --mount type=bind,src=$PWD/config/zenoh.json,dst=/root/_build/prod/rel/giocci_relay/zenoh.json --rm ghcr.io/pojiro/giocci_relay:0.1.0
+docker compose run --rm giocci_relay
 ```

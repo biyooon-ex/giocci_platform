@@ -7,10 +7,6 @@ defmodule GiocciEngine.Worker do
 
   # API
 
-  def register_engine(relay_name, opts \\ []) do
-    GenServer.call(@worker_name, {:register_engine, relay_name, opts})
-  end
-
   def start_link(args) do
     GenServer.start_link(__MODULE__, args, name: @worker_name)
   end
@@ -71,26 +67,6 @@ defmodule GiocciEngine.Worker do
        exec_func_async_key: exec_func_async_key,
        exec_func_async_subscriber_id: exec_func_async_subscriber_id
      }}
-  end
-
-  def handle_call({:register_engine, relay_name, opts}, _from, state) do
-    engine_name = state.engine_name
-    session_id = state.session_id
-    key_prefix = state.key_prefix
-
-    timeout = Keyword.get(opts, :timeout, 100)
-
-    send_term = %{engine_name: engine_name}
-
-    result =
-      with key <- Path.join(key_prefix, "giocci/register/engine/#{relay_name}"),
-           {:ok, binary} <- encode(send_term),
-           {:ok, binary} <- zenohex_get(session_id, key, timeout, binary),
-           {:ok, recv_term} <- decode(binary) do
-        recv_term
-      end
-
-    {:reply, result, state}
   end
 
   # for GiocciRelay.save_module/3

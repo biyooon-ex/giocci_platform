@@ -54,6 +54,8 @@ defmodule GiocciEngine.Worker do
         recv_term
       end
 
+    Logger.info("#{inspect(engine_name)} started.")
+
     {:ok,
      %{
        engine_name: engine_name,
@@ -77,7 +79,12 @@ defmodule GiocciEngine.Worker do
     result =
       with {:ok, recv_term} <- decode(binary),
            :ok <- save_module(recv_term) do
+        Logger.debug("Module saved successfully.")
         :ok
+      else
+        error ->
+          Logger.error("Module save failed, #{inspect(error)}.")
+          error
       end
 
     {:ok, binary} = encode(result)
@@ -93,10 +100,15 @@ defmodule GiocciEngine.Worker do
       ) do
     result =
       with {:ok, recv_term} <- decode(binary),
-           {:ok, {{m, f, args}, _client_name}} <- extract_exec_func(recv_term),
+           {:ok, {{m, _f, _args} = mfargs, _client_name}} <- extract_exec_func(recv_term),
            :ok <- ensure_module_saved(m),
-           {:ok, result} <- exec_func({m, f, args}) do
+           {:ok, result} <- exec_func(mfargs) do
+        Logger.debug("Exec func successfully, #{inspect(mfargs)}.")
         result
+      else
+        error ->
+          Logger.error("Exec func failed, #{inspect(error)}.")
+          error
       end
 
     {:ok, binary} = encode(result)
@@ -114,14 +126,17 @@ defmodule GiocciEngine.Worker do
     key_prefix = state.key_prefix
 
     with {:ok, recv_term} <- decode(binary),
-         {:ok, {{m, f, args}, exec_id, client_name}} <- extract_exec_func_async(recv_term),
+         {:ok, {{m, _f, _args} = mfargs, exec_id, client_name}} <-
+           extract_exec_func_async(recv_term),
          :ok <- ensure_module_saved(m),
-         {:ok, result} <- exec_func({m, f, args}),
+         {:ok, result} <- exec_func(mfargs),
          key <- Path.join(key_prefix, "giocci/exec_func_async/engine/#{client_name}") do
+      Logger.debug("Exec func async successfully, #{inspect(mfargs)}.")
+
       result =
         {:ok,
          %{
-           mfargs: {m, f, args},
+           mfargs: mfargs,
            exec_id: exec_id,
            client_name: client_name,
            result: result
@@ -129,6 +144,10 @@ defmodule GiocciEngine.Worker do
 
       {:ok, binary} = encode(result)
       :ok = Zenohex.Session.put(session_id, key, binary)
+    else
+      error ->
+        Logger.error("Exec func async failed, #{inspect(error)}.")
+        error
     end
 
     {:noreply, state}

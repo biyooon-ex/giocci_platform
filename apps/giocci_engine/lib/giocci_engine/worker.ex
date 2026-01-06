@@ -233,6 +233,9 @@ defmodule GiocciEngine.Worker do
   rescue
     UndefinedFunctionError ->
       {:error, "#{inspect(mfargs)} not defined"}
+
+    unexpected_error ->
+      {:error, "An unexpected error has occured, #{inspect(unexpected_error)}"}
   end
 
   defp ensure_module_saved(module) do

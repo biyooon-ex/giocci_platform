@@ -40,21 +40,29 @@ defmodule GiocciEngine.ExecFuncHandler do
         %Zenohex.Query{key_expr: exec_func_key, payload: binary, zenoh_query: zenoh_query},
         %{exec_func_key: exec_func_key} = state
       ) do
-    result =
-      with {:ok, recv_term} <- Utils.decode(binary),
-           {:ok, {{m, _f, _args} = mfargs, _client_name}} <- extract(recv_term),
-           :ok <- Utils.ensure_module_saved(m),
-           {:ok, result} <- Utils.exec_func(mfargs) do
-        Logger.debug("Exec func successfully, #{inspect(mfargs)}.")
-        result
-      else
-        error ->
-          Logger.error("Exec func failed, #{inspect(error)}.")
-          error
-      end
+    fun = fn ->
+      result =
+        with {:ok, recv_term} <- Utils.decode(binary),
+             {:ok, {{m, _f, _args} = mfargs, _client_name}} <- extract(recv_term),
+             :ok <- Utils.ensure_module_saved(m),
+             {:ok, result} <- Utils.exec_func(mfargs) do
+          Logger.debug("Exec func successfully, #{inspect(mfargs)}.")
+          result
+        else
+          error ->
+            Logger.error("Exec func failed, #{inspect(error)}.")
+            error
+        end
 
-    {:ok, binary} = Utils.encode(result)
-    :ok = Zenohex.Query.reply(zenoh_query, exec_func_key, binary)
+      {:ok, binary} = Utils.encode(result)
+      :ok = Zenohex.Query.reply(zenoh_query, exec_func_key, binary)
+    end
+
+    {:ok, _pid} =
+      Task.Supervisor.start_child(
+        {:via, PartitionSupervisor, {GiocciEngine.TaskSupervisors, make_ref()}},
+        fun
+      )
 
     {:noreply, state}
   end

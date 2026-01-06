@@ -43,29 +43,37 @@ defmodule GiocciEngine.ExecFuncAsyncHandler do
     session_id = state.session_id
     key_prefix = state.key_prefix
 
-    with {:ok, recv_term} <- Utils.decode(binary),
-         {:ok, {{m, _f, _args} = mfargs, exec_id, client_name}} <- extract(recv_term),
-         :ok <- Utils.ensure_module_saved(m),
-         {:ok, result} <- Utils.exec_func(mfargs),
-         key <- Path.join(key_prefix, "giocci/exec_func_async/engine/#{client_name}") do
-      Logger.debug("Exec func async successfully, #{inspect(mfargs)}.")
+    fun = fn ->
+      with {:ok, recv_term} <- Utils.decode(binary),
+           {:ok, {{m, _f, _args} = mfargs, exec_id, client_name}} <- extract(recv_term),
+           :ok <- Utils.ensure_module_saved(m),
+           {:ok, result} <- Utils.exec_func(mfargs),
+           key <- Path.join(key_prefix, "giocci/exec_func_async/engine/#{client_name}") do
+        Logger.debug("Exec func async successfully, #{inspect(mfargs)}.")
 
-      result =
-        {:ok,
-         %{
-           mfargs: mfargs,
-           exec_id: exec_id,
-           client_name: client_name,
-           result: result
-         }}
+        result =
+          {:ok,
+           %{
+             mfargs: mfargs,
+             exec_id: exec_id,
+             client_name: client_name,
+             result: result
+           }}
 
-      {:ok, binary} = Utils.encode(result)
-      :ok = Zenohex.Session.put(session_id, key, binary)
-    else
-      error ->
-        Logger.error("Exec func async failed, #{inspect(error)}.")
-        error
+        {:ok, binary} = Utils.encode(result)
+        :ok = Zenohex.Session.put(session_id, key, binary)
+      else
+        error ->
+          Logger.error("Exec func async failed, #{inspect(error)}.")
+          error
+      end
     end
+
+    {:ok, _pid} =
+      Task.Supervisor.start_child(
+        {:via, PartitionSupervisor, {GiocciEngine.TaskSupervisors, make_ref()}},
+        fun
+      )
 
     {:noreply, state}
   end

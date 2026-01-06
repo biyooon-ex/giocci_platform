@@ -13,6 +13,7 @@ defmodule GiocciEngine.Application do
     relay_name = Application.fetch_env!(:giocci_engine, :relay_name)
 
     children = [
+      {PartitionSupervisor, child_spec: Task.Supervisor, name: GiocciEngine.TaskSupervisors},
       {GiocciEngine.SessionManager, [zenoh_config_file_path: zenoh_config_file_path]},
       {GiocciEngine.ModuleSaver,
        [

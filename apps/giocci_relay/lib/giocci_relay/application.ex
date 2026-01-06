@@ -13,9 +13,24 @@ defmodule GiocciRelay.Application do
 
     children = [
       {GiocciRelay.ModuleStore, []},
-      {GiocciRelay.Worker,
+      {GiocciRelay.SessionManager, [zenoh_config_file_path: zenoh_config_file_path]},
+      {GiocciRelay.ClientRegistrar,
        [
-         zenoh_config_file_path: zenoh_config_file_path,
+         relay_name: relay_name,
+         key_prefix: key_prefix
+       ]},
+      {GiocciRelay.EngineRegistrar,
+       [
+         relay_name: relay_name,
+         key_prefix: key_prefix
+       ]},
+      {GiocciRelay.ModuleSaver,
+       [
+         relay_name: relay_name,
+         key_prefix: key_prefix
+       ]},
+      {GiocciRelay.EngineInquiryHandler,
+       [
          relay_name: relay_name,
          key_prefix: key_prefix
        ]}

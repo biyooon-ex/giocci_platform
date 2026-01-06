@@ -66,49 +66,39 @@ defmodule GiocciRelay.Worker do
      }}
   end
 
-  def handle_continue({:save_module, engine_name}, state) do
-    session_id = state.session_id
-    key_prefix = state.key_prefix
-    relay_name = state.relay_name
-
-    with key <- Path.join(key_prefix, "giocci/save_module/relay/#{engine_name}"),
-         {:ok, client_modules_map} <- GiocciRelay.ModuleStore.get(),
-         {:ok, binary} <-
-           encode(%{relay_name: relay_name, client_modules_map: client_modules_map}),
-         {:ok, binary} <- zenohex_get(session_id, key, _timeout = 5000, binary),
-         {:ok, recv_term} <- decode(binary) do
-      :ok = recv_term
-    end
-
-    {:noreply, state}
-  end
-
   # for GiocciEngine.register_engine/2
   def handle_info(
         %Zenohex.Query{key_expr: register_engine_key, payload: binary, zenoh_query: zenoh_query},
         %{register_engine_key: register_engine_key} = state
       ) do
+    session_id = state.session_id
+    key_prefix = state.key_prefix
+    relay_name = state.relay_name
     registered_engines = state.registered_engines
 
-    with {:ok, %{engine_name: engine_name}} <- decode(binary) do
-      {:ok, binary} = encode(:ok)
-      :ok = Zenohex.Query.reply(zenoh_query, register_engine_key, binary)
+    {result, state} =
+      with {:ok, %{engine_name: engine_name}} <- decode(binary),
+           key <- Path.join(key_prefix, "giocci/save_module/relay/#{engine_name}"),
+           {:ok, client_modules_map} <- GiocciRelay.ModuleStore.get(),
+           {:ok, binary} <-
+             encode(%{relay_name: relay_name, client_modules_map: client_modules_map}),
+           {:ok, binary} <- zenohex_get(session_id, key, _timeout = 5000, binary),
+           {:ok, recv_term} <- decode(binary),
+           :ok <- recv_term do
+        Logger.debug("#{inspect(engine_name)} registration completed successfully.")
+        registered_engines = [engine_name | registered_engines] |> Enum.uniq()
+        state = %{state | registered_engines: registered_engines}
+        {:ok, state}
+      else
+        error ->
+          Logger.error("Engine registration failed by #{inspect(error)}.")
+          {error, state}
+      end
 
-      Logger.debug("#{inspect(engine_name)} registration completed successfully.")
+    {:ok, binary} = encode(result)
+    :ok = Zenohex.Query.reply(zenoh_query, register_engine_key, binary)
 
-      registered_engines = [engine_name | registered_engines] |> Enum.uniq()
-      state = %{state | registered_engines: registered_engines}
-
-      {:noreply, state, {:continue, {:save_module, engine_name}}}
-    else
-      error ->
-        Logger.error("Engine registration failed by #{inspect(error)}.")
-
-        {:ok, binary} = encode(error)
-        :ok = Zenohex.Query.reply(zenoh_query, register_engine_key, binary)
-
-        {:noreply, state}
-    end
+    {:noreply, state}
   end
 
   # for GiocciClient.register_client/2

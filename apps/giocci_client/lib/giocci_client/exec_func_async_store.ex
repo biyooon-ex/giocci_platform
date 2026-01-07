@@ -4,6 +4,7 @@ defmodule GiocciClient.ExecFuncAsyncStore do
   use GenServer
 
   @name __MODULE__
+  @polling_interval 1000
 
   # API
 
@@ -26,7 +27,28 @@ defmodule GiocciClient.ExecFuncAsyncStore do
   # callbacks
 
   def init(_args) do
+    Process.send_after(self(), :polling, @polling_interval)
     {:ok, %{}}
+  end
+
+  def handle_info(:polling, state) do
+    Process.send_after(self(), :polling, @polling_interval)
+    {:noreply, state, {:continue, :check_timeout}}
+  end
+
+  def handle_continue(:check_timeout, state) do
+    state =
+      Enum.reduce(state, %{}, fn {exec_id, map}, acc ->
+        if is_integer(map.timeout) and
+             map.put_time + map.timeout < System.monotonic_time(:millisecond) do
+          :ok = Zenohex.Subscriber.undeclare(map.subscriber_id)
+          acc
+        else
+          Map.put(acc, exec_id, map)
+        end
+      end)
+
+    {:noreply, state}
   end
 
   def handle_call({:get, key, default}, _from, state) do

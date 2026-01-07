@@ -1,4 +1,6 @@
 defmodule GiocciRelay.EngineInquiryHandler do
+  @moduledoc false
+
   use GenServer
 
   require Logger

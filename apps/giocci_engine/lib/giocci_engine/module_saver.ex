@@ -1,4 +1,6 @@
 defmodule GiocciEngine.ModuleSaver do
+  @moduledoc false
+
   use GenServer
 
   require Logger

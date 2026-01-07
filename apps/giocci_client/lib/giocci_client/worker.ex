@@ -156,9 +156,8 @@ defmodule GiocciClient.Worker do
            key <- Path.join(key_prefix, "giocci/exec_func_async/engine/#{client_name}"),
            {:ok, subscriber_id} <- Zenohex.Session.declare_subscriber(session_id, key),
            key <- Path.join(key_prefix, "giocci/exec_func_async/client/#{engine_name}"),
-           :ok <- Zenohex.Session.put(session_id, key, send_binary),
-           :ok = GiocciClient.Store.put(exec_id, %{server: server, subscriber_id: subscriber_id}) do
-        :ok
+           :ok <- Zenohex.Session.put(session_id, key, send_binary) do
+        GiocciClient.Store.put(exec_id, %{server: server, subscriber_id: subscriber_id})
       end
 
     {:reply, result, state}

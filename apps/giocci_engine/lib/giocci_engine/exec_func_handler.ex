@@ -1,4 +1,6 @@
 defmodule GiocciEngine.ExecFuncHandler do
+  @moduledoc false
+
   use GenServer
 
   require Logger

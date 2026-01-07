@@ -1,4 +1,6 @@
 defmodule GiocciRelay.ModuleStore do
+  @moduledoc false
+
   use GenServer
 
   @type module_object_code() :: {module(), binary(), :file.filename()}

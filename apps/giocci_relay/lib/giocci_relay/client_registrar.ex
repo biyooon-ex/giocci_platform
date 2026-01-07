@@ -1,4 +1,6 @@
 defmodule GiocciRelay.ClientRegistrar do
+  @moduledoc false
+
   use GenServer
 
   require Logger

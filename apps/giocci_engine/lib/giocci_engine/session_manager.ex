@@ -1,4 +1,6 @@
 defmodule GiocciEngine.SessionManager do
+  @moduledoc false
+
   use GenServer
 
   require Logger

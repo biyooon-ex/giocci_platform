@@ -1,4 +1,6 @@
 defmodule GiocciClient.Store do
+  @moduledoc false
+
   use Agent
 
   @agent_name __MODULE__

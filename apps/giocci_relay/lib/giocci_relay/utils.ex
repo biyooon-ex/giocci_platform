@@ -1,4 +1,6 @@
 defmodule GiocciRelay.Utils do
+  @moduledoc false
+
   def zenohex_get(session_id, key, timeout, payload) do
     case Zenohex.Session.get(session_id, key, timeout, payload: payload) do
       {:ok, [%Zenohex.Sample{payload: payload}]} ->

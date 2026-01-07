@@ -1,4 +1,6 @@
 defmodule GiocciRelay.SessionManager do
+  @moduledoc false
+
   use GenServer
 
   require Logger

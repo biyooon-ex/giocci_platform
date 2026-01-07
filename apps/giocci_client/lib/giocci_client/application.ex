@@ -13,9 +13,9 @@ defmodule GiocciClient.Application do
 
     children = [
       {GiocciClient.Store, []},
+      {GiocciClient.SessionManager, [zenoh_config_file_path: zenoh_config_file_path]},
       {GiocciClient.Worker,
        [
-         zenoh_config_file_path: zenoh_config_file_path,
          client_name: client_name,
          key_prefix: key_prefix
        ]}

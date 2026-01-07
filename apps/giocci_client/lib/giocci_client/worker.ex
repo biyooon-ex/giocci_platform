@@ -1,4 +1,6 @@
 defmodule GiocciClient.Worker do
+  @moduledoc false
+
   use GenServer
 
   @worker_name __MODULE__
@@ -28,26 +30,12 @@ defmodule GiocciClient.Worker do
   # callbacks
 
   def init(args) do
-    zenoh_config =
-      case Keyword.get(args, :zenoh_config_file_path) do
-        nil ->
-          Zenohex.Config.default()
-          |> Zenohex.Config.update_in(["mode"], fn _ -> "client" end)
-
-        zenoh_config_file_path ->
-          zenoh_config_file_path
-          |> File.read!()
-      end
-
     client_name = Keyword.fetch!(args, :client_name)
     key_prefix = Keyword.get(args, :key_prefix, "")
-
-    {:ok, session_id} = Zenohex.Session.open(zenoh_config)
 
     {:ok,
      %{
        client_name: client_name,
-       session_id: session_id,
        key_prefix: key_prefix,
        registered_relays: []
      }}
@@ -55,9 +43,10 @@ defmodule GiocciClient.Worker do
 
   def handle_call({:register_client, relay_name, opts}, _from, state) do
     client_name = state.client_name
-    session_id = state.session_id
     key_prefix = state.key_prefix
     registered_relays = state.registered_relays
+
+    session_id = GiocciClient.SessionManager.session_id()
 
     timeout = Keyword.get(opts, :timeout, 5000)
 
@@ -80,9 +69,10 @@ defmodule GiocciClient.Worker do
 
   def handle_call({:save_module, relay_name, module, opts}, _from, state) do
     client_name = state.client_name
-    session_id = state.session_id
     key_prefix = state.key_prefix
     registered_relays = state.registered_relays
+
+    session_id = GiocciClient.SessionManager.session_id()
 
     timeout = Keyword.get(opts, :timeout, 5000)
 
@@ -108,9 +98,10 @@ defmodule GiocciClient.Worker do
 
   def handle_call({:exec_func, relay_name, mfargs, opts}, _from, state) do
     client_name = state.client_name
-    session_id = state.session_id
     key_prefix = state.key_prefix
     registered_relays = state.registered_relays
+
+    session_id = GiocciClient.SessionManager.session_id()
 
     timeout = Keyword.get(opts, :timeout, 5000)
 
@@ -139,9 +130,10 @@ defmodule GiocciClient.Worker do
 
   def handle_call({:exec_func_async, relay_name, mfargs, server, opts}, _from, state) do
     client_name = state.client_name
-    session_id = state.session_id
     key_prefix = state.key_prefix
     registered_relays = state.registered_relays
+
+    session_id = GiocciClient.SessionManager.session_id()
 
     timeout = Keyword.get(opts, :timeout, 5000)
 

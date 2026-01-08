@@ -1,6 +1,8 @@
 defmodule GiocciIntegrationTest do
   use ExUnit.Case
 
+  @moduletag capture_log: true
+
   @relay_name "giocci_relay"
 
   describe "happy path" do

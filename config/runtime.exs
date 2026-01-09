@@ -1,5 +1,9 @@
 import Config
 
+config :logger, :default_formatter,
+  colors: [enabled: false],
+  format: "\n$date $time $metadata[$level] $message\n"
+
 config :logger, :default_handler,
   config: [
     file: ~c"log/giocci.log",

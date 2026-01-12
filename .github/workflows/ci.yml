@@ -11,7 +11,7 @@ jobs:
       contents: read
       packages: read
     container:
-      image: ghcr.io/pojiro/giocci_zenohd:1.7.1
+      image: ghcr.io/biyooon-ex/giocci/zenohd:1.7.1
     env:
       MIX_ENV: test
     steps:

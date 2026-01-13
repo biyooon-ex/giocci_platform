@@ -11,10 +11,12 @@ ENV LANG=C.UTF-8
 RUN mix local.hex --force && mix local.rebar --force
 
 COPY mix.exs mix.exs
+COPY mix.lock mix.lock
 COPY config config
-COPY apps apps
 RUN mix deps.get --only prod
 RUN mix deps.compile
+
+COPY lib lib
 RUN mix compile
 RUN mix release giocci_engine
 

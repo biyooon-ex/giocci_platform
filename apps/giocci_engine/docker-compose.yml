@@ -2,8 +2,8 @@ services:
   giocci_engine:
     image: ghcr.io/biyooon-ex/giocci/giocci_engine:0.3.0
     build:
-      context: ../../
-      dockerfile: apps/giocci_engine/Dockerfile
+      context: ./
+      dockerfile: ./Dockerfile
     volumes:
       - ./config/giocci_engine.exs:/root/giocci_engine/giocci_engine.exs:ro
       - ./config/zenoh.json:/root/giocci_engine/zenoh.json:ro

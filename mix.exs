@@ -7,30 +7,7 @@ defmodule Giocci.MixProject do
       version: "0.1.0",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
-      aliases: aliases(),
-      releases: [
-        giocci_client: [
-          include_executables_for: [:unix],
-          applications: [giocci_client: :permanent],
-          config_providers: [
-            {Config.Reader, {:system, "RELEASE_ROOT", "/giocci_client.exs"}}
-          ]
-        ],
-        giocci_relay: [
-          include_executables_for: [:unix],
-          applications: [giocci_relay: :permanent],
-          config_providers: [
-            {Config.Reader, {:system, "RELEASE_ROOT", "/giocci_relay.exs"}}
-          ]
-        ],
-        giocci_engine: [
-          include_executables_for: [:unix],
-          applications: [giocci_engine: :permanent],
-          config_providers: [
-            {Config.Reader, {:system, "RELEASE_ROOT", "/giocci_engine.exs"}}
-          ]
-        ]
-      ]
+      aliases: aliases()
     ]
   end
 

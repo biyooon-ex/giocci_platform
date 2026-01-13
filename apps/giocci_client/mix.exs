@@ -5,14 +5,15 @@ defmodule GiocciClient.MixProject do
     [
       app: :giocci_client,
       version: "0.3.0",
-      build_path: "../../_build",
-      config_path: "../../config/config.exs",
-      deps_path: "../../deps",
-      lockfile: "../../mix.lock",
+      build_path: "./_build",
+      config_path: "./config/config.exs",
+      deps_path: "./deps",
+      lockfile: "./mix.lock",
       elixir: "~> 1.19",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       aliases: aliases(),
+      releases: releases(),
       description: description(),
       package: package()
     ]
@@ -51,6 +52,18 @@ defmodule GiocciClient.MixProject do
   defp aliases do
     [
       test: ["test --no-start"]
+    ]
+  end
+
+  def releases do
+    [
+      giocci_client: [
+        include_executables_for: [:unix],
+        applications: [giocci_client: :permanent],
+        config_providers: [
+          {Config.Reader, {:system, "RELEASE_ROOT", "/giocci_client.exs"}}
+        ]
+      ]
     ]
   end
 end

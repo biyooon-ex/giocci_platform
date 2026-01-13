@@ -2,8 +2,8 @@ services:
   giocci_relay:
     image: ghcr.io/biyooon-ex/giocci/giocci_relay:0.3.0
     build:
-      context: ../../
-      dockerfile: apps/giocci_relay/Dockerfile
+      context: ./
+      dockerfile: ./Dockerfile
     volumes:
       - ./config/giocci_relay.exs:/root/giocci_relay/giocci_relay.exs:ro
       - ./config/zenoh.json:/root/giocci_relay/zenoh.json:ro

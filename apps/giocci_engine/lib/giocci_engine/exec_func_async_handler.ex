@@ -88,6 +88,6 @@ defmodule GiocciEngine.ExecFuncAsyncHandler do
 
     {:ok, {mfargs, exec_id, client_name}}
   rescue
-    MatchError -> {:error, :term_not_expected}
+    MatchError -> {:error, "term_not_expected"}
   end
 end

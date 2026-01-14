@@ -66,7 +66,7 @@ defmodule GiocciRelay.ClientRegistrar do
       if client_name in state.registered_clients do
         :ok
       else
-        {:error, :client_not_registered}
+        {:error, "client_not_registered"}
       end
 
     {:reply, result, state}

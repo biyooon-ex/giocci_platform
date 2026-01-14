@@ -201,13 +201,13 @@ defmodule GiocciClient.Worker do
         {:ok, payload}
 
       {:error, :timeout} ->
-        {:error, :timeout}
+        {:error, "timeout"}
 
       {:error, reason} ->
-        {:error, "Zenohex.Session.get/4 error: #{inspect(reason)}"}
+        {:error, "zenohex_error: #{inspect(reason)}"}
     end
   rescue
-    ArgumentError -> {:error, "Zenohex.Session.get/4 error: badarg"}
+    ArgumentError -> {:error, "zenohex_error: badarg"}
   end
 
   defp encode(term) do
@@ -218,14 +218,14 @@ defmodule GiocciClient.Worker do
     # We pass the `safe` option to protect user's Erlang VM.
     {:ok, :erlang.binary_to_term(payload, [:safe])}
   rescue
-    ArgumentError -> {:error, :decode_failed}
+    ArgumentError -> {:error, "decode_failed"}
   end
 
   defp validate_module_found(module) do
     if Code.ensure_loaded?(module) do
       :ok
     else
-      {:error, :module_not_found}
+      {:error, "module_not_found"}
     end
   end
 
@@ -233,7 +233,7 @@ defmodule GiocciClient.Worker do
     if relay_name in registered_relays do
       :ok
     else
-      {:error, :relay_not_registered}
+      {:error, "relay_not_registered"}
     end
   end
 end

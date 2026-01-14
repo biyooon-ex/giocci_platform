@@ -69,6 +69,6 @@ defmodule GiocciRelay.EngineInquiryHandler do
 
     {:ok, {mfargs, client_name}}
   rescue
-    MatchError -> {:error, :term_not_expected}
+    MatchError -> {:error, "term_not_expected"}
   end
 end

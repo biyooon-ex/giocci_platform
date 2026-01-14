@@ -15,17 +15,17 @@ defmodule GiocciClient.WorkerTest do
   end
 
   test "register_client/3" do
-    assert {:error, "Zenohex.Session.get/4 error: badarg"} =
+    assert {:error, "zenohex_error: badarg"} =
              GiocciClient.Worker.register_client("missing-relay")
   end
 
   test "save_module/3 returns error for unregistered relay" do
-    assert {:error, :relay_not_registered} =
+    assert {:error, "relay_not_registered"} =
              GiocciClient.Worker.save_module("missing-relay", GiocciClient.Worker)
   end
 
   test "exec_func/3 returns error for unregistered relay" do
-    assert {:error, :relay_not_registered} =
+    assert {:error, "relay_not_registered"} =
              GiocciClient.Worker.exec_func(
                "missing-relay",
                {GiocciClient.Worker, :start_link, [[]]}
@@ -39,7 +39,7 @@ defmodule GiocciClient.WorkerTest do
 
     missing_module = Module.concat(["GiocciClient", "MissingModule"])
 
-    assert {:error, :module_not_found} =
+    assert {:error, "module_not_found"} =
              GiocciClient.Worker.save_module("relay-1", missing_module)
   end
 end

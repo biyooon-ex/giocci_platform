@@ -11,13 +11,13 @@ defmodule GiocciEngine.UtilsTest do
   end
 
   test "exec_func returns error for undefined function" do
-    assert {:error, "{String, :nope, []} not defined"} =
+    assert {:error, "function_not_defined: {String, :nope, []}"} =
              GiocciEngine.Utils.exec_func({String, :nope, []})
   end
 
   test "exec_func returns error for unexpected exception" do
     assert {:error, message} = GiocciEngine.Utils.exec_func({TestModule, :boom, []})
-    assert message =~ "unexpected"
+    assert message =~ "execution_failed"
   end
 
   test "decode returns term for valid binary" do
@@ -27,6 +27,6 @@ defmodule GiocciEngine.UtilsTest do
   end
 
   test "decode returns error for invalid binary" do
-    assert {:error, :decode_failed} = GiocciEngine.Utils.decode(<<0, 1, 2>>)
+    assert {:error, "decode_failed"} = GiocciEngine.Utils.decode(<<0, 1, 2>>)
   end
 end

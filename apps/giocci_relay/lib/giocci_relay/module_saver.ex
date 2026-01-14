@@ -85,6 +85,6 @@ defmodule GiocciRelay.ModuleSaver do
 
     {:ok, {module_object_code, timeout, client_name}}
   rescue
-    MatchError -> {:error, :term_not_expected}
+    MatchError -> {:error, "term_not_expected"}
   end
 end

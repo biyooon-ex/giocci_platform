@@ -70,14 +70,14 @@ defmodule GiocciEngine.ModuleSaver do
 
     {:ok, {relay_name, client_modules_map}}
   rescue
-    MatchError -> {:error, :term_not_expected}
+    MatchError -> {:error, "term_not_expected"}
   end
 
   defp verify_relay_name(registered, received) do
     if registered == received do
       :ok
     else
-      {:error, :received_relay_name_is_invalid}
+      {:error, "relay_name_invalid"}
     end
   end
 
@@ -97,7 +97,7 @@ defmodule GiocciEngine.ModuleSaver do
     if Enum.all?(results, &(&1 == :ok)) do
       :ok
     else
-      {:error, :save_module_failed}
+      {:error, "save_module_failed"}
     end
   end
 

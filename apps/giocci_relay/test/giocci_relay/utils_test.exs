@@ -8,6 +8,6 @@ defmodule GiocciRelay.UtilsTest do
   end
 
   test "decode returns error for invalid binary" do
-    assert {:error, :decode_failed} = GiocciRelay.Utils.decode(<<0, 1, 2>>)
+    assert {:error, "decode_failed"} = GiocciRelay.Utils.decode(<<0, 1, 2>>)
   end
 end

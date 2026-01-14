@@ -7,10 +7,10 @@ defmodule GiocciRelay.Utils do
         {:ok, payload}
 
       {:error, :timeout} ->
-        {:error, :timeout}
+        {:error, "timeout"}
 
       {:error, reason} ->
-        {:error, "Zenohex.Session.get/4 error: #{inspect(reason)}"}
+        {:error, "zenohex_error: #{inspect(reason)}"}
     end
   end
 
@@ -23,6 +23,6 @@ defmodule GiocciRelay.Utils do
     # when the binary contains module object code.
     {:ok, :erlang.binary_to_term(payload)}
   rescue
-    ArgumentError -> {:error, :decode_failed}
+    ArgumentError -> {:error, "decode_failed"}
   end
 end

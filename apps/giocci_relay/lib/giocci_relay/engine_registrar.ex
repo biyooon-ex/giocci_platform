@@ -86,7 +86,7 @@ defmodule GiocciRelay.EngineRegistrar do
 
     result =
       if Enum.empty?(registered_engines) do
-        {:error, :engine_not_registered}
+        {:error, "engine_not_registered"}
       else
         # IMPREMENT ME, select engine logic
         {:ok, List.first(registered_engines)}

@@ -1,26 +1,80 @@
-# For developers
+# For Developers
 
-## About test
+This document provides instructions for developers working on the Giocci project.
 
-### CI docker image
+## Testing
 
-CI docker image is built by using the Dockerfile and docker-compose.yml for the `zenohd` service.
+### Local Testing
 
-This image is built and pushed by following commands,
+Run all tests locally:
+
+```bash
+./bin/test.sh
+```
+
+This script starts a local Zenoh daemon and runs the test suite.
+
+### CI Docker Image
+
+The CI environment uses a Docker image built from the root `Dockerfile` and `docker-compose.yml` for the `zenohd` service.
+
+To build and push the CI image:
 
 ```bash
 docker compose build zenohd
 docker compose push zenohd
 ```
 
-### How to test locally
+**Note**: This image is used by GitHub Actions for running tests in CI.
+
+## Version Management
+
+### Check Version Consistency
+
+Ensure all version numbers are consistent across the project:
 
 ```bash
-./bin/test.sh
+./bin/check_version_consistency.exs
 ```
 
-## How to update Giocci zenoh version
+This script verifies that version numbers in `mix.exs`, `VERSIONS`, and other configuration files match.
 
-1. Update zenohex versions in each giocci_(client|relay|engine) mix.exs
-2. Update zenoh version in Dockerfile and image tag in docker-compose.yml
-3. Update image tag in .github/workflows/ci.yml
+## Building and Publishing
+
+### Build and Push Docker Images
+
+Build and push all application Docker images (giocci_client, giocci_relay, giocci_engine):
+
+```bash
+./bin/build_and_push_app_images.sh
+```
+
+This script:
+1. Builds Docker images for each application
+2. Tags them with the current version
+3. Pushes them to the container registry
+
+### Publish to Hex
+
+Publish the giocci_client package to Hex.pm:
+
+```bash
+mix hex.publish
+```
+
+**Prerequisites**:
+- Ensure version numbers are consistent (run `./bin/check_version_consistency.exs`)
+- Update CHANGELOG if applicable
+- Ensure all tests pass
+
+## Development Workflow
+
+1. Make changes to the code
+2. Run tests locally: `./bin/test.sh`
+3. Check version consistency: `./bin/check_version_consistency.exs`
+4. Commit and push changes
+5. CI will automatically run tests
+6. For releases:
+   - Update version numbers
+   - Build and push Docker images: `./bin/build_and_push_app_images.sh`
+   - Publish to Hex: `mix hex.publish`

@@ -1,31 +1,44 @@
 FROM hexpm/elixir:1.19.4-erlang-28.3-ubuntu-noble-20251013 AS builder
 
+# Install build dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
   ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /root
+WORKDIR /app
+
 ENV MIX_ENV=prod
 ENV LANG=C.UTF-8
 
 RUN mix local.hex --force && mix local.rebar --force
 
-COPY mix.exs mix.exs
-COPY mix.lock mix.lock
-COPY config config
+# Copy dependency files first for better caching
+COPY mix.exs mix.lock ./
+COPY config ./config
 RUN mix deps.get --only prod
 RUN mix deps.compile
 
-COPY lib lib
+# Copy application source
+COPY lib ./lib
 RUN mix compile
 RUN mix release giocci_client
 
+# Runtime stage
 FROM ubuntu:noble-20251013 AS runner
 
-WORKDIR /root
+# Create non-root user
+RUN groupadd -r giocci && \
+  useradd -r -g giocci giocci
+
+WORKDIR /app
+USER giocci
+
 ENV MIX_ENV=prod
 ENV LANG=C.UTF-8
 
-COPY --from=builder /root/_build/prod/rel/giocci_client giocci_client
+# Copy release from builder
+COPY --from=builder --chown=giocci:giocci /app/_build/prod/rel/giocci_client ./
 
-CMD ["/root/giocci_client/bin/giocci_client", "start_iex"]
+# Use ENTRYPOINT and CMD for flexibility
+ENTRYPOINT ["/app/bin/giocci_client"]
+CMD ["start_iex"]

@@ -5,8 +5,8 @@ services:
       context: ./
       dockerfile: ./Dockerfile
     volumes:
-      - ./config/giocci_client.exs:/root/giocci_client/giocci_client.exs:ro
-      - ./config/zenoh.json:/root/giocci_client/zenoh.json:ro
+      - ./config/giocci_client.exs:/app/giocci_client.exs:ro
+      - ./config/zenoh.json:/app/zenoh.json:ro
     restart: "always"
     stdin_open: true
     tty: true

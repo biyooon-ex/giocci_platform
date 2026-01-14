@@ -5,8 +5,8 @@ services:
       context: ./
       dockerfile: ./Dockerfile
     volumes:
-      - ./config/giocci_relay.exs:/root/giocci_relay/giocci_relay.exs:ro
-      - ./config/zenoh.json:/root/giocci_relay/zenoh.json:ro
+      - ./config/giocci_relay.exs:/app/giocci_relay.exs:ro
+      - ./config/zenoh.json:/app/zenoh.json:ro
     restart: "always"
     logging:
       driver: "json-file"

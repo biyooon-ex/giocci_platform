@@ -1,21 +1,24 @@
 # GiocciIntegration
 
-**TODO: Add description**
+Integration test suite for Giocci.
 
-## Installation
+This application contains integration tests that verify the interaction between
+Giocci components (client, relay, and engine). It includes a test module
+(`GiocciIntegration`) that is used to test module distribution and remote
+execution across the system.
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `giocci_integration` to your list of dependencies in `mix.exs`:
+## Running Tests
 
-```elixir
-def deps do
-  [
-    {:giocci_integration, "~> 0.1.0"}
-  ]
-end
+From the project root:
+
+```bash
+./bin/test.sh
 ```
 
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at <https://hexdocs.pm/giocci_integration>.
+## Test Coverage
 
+- Client registration with relay
+- Module saving and distribution
+- Function execution on remote engines
+- Asynchronous function execution
+- Error handling when components are unavailable

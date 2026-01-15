@@ -115,8 +115,11 @@ defmodule GiocciIntegrationTest do
       result = GiocciClient.register_client(@relay_name)
       assert {:error, error_msg} = result
 
-      assert String.starts_with?(error_msg, "zenohex_error: "),
-             "Expected zenohex_error but got: #{inspect(result)}"
+      assert String.starts_with?(error_msg, "connection_failed: "),
+             "Expected connection_failed but got: #{inspect(result)}"
+
+      assert String.contains?(error_msg, "may not be running"),
+             "Expected 'may not be running' message but got: #{inspect(result)}"
     end
 
     test "relay started but no engine - exec_func fails" do
@@ -150,8 +153,11 @@ defmodule GiocciIntegrationTest do
 
       assert {:error, error_msg} = result
 
-      assert String.starts_with?(error_msg, "zenohex_error: "),
-             "Expected zenohex_error after engine stopped but got: #{inspect(result)}"
+      assert String.starts_with?(error_msg, "connection_failed: "),
+             "Expected connection_failed after engine stopped but got: #{inspect(result)}"
+
+      assert String.contains?(error_msg, "may not be running"),
+             "Expected 'may not be running' message but got: #{inspect(result)}"
     end
   end
 end

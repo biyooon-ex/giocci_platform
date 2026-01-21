@@ -38,7 +38,6 @@ jobs:
 
       - name: Run tests
         run: |
-          zenohd &
           mix test
 
   code-analysis:

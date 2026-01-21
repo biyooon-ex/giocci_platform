@@ -9,10 +9,12 @@ This document provides instructions for developers working on the Giocci project
 Run all tests locally:
 
 ```bash
-./bin/test.sh
+mix test
 ```
 
-This script starts a local Zenoh daemon and runs the test suite.
+This command automatically detects your environment and runs tests appropriately:
+- If Docker is available: runs tests in a containerized environment with Zenoh daemon
+- If running inside a container: executes tests directly with background Zenoh daemon
 
 ### CI Docker Image
 
@@ -70,7 +72,7 @@ mix hex.publish
 ## Development Workflow
 
 1. Make changes to the code
-2. Run tests locally: `./bin/test.sh`
+2. Run tests locally: `mix test`
 3. Check version consistency: `./bin/check_version_consistency.exs`
 4. Commit and push changes
 5. CI will automatically run tests

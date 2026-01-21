@@ -12,8 +12,10 @@ execution across the system.
 From the project root:
 
 ```bash
-./bin/test.sh
+mix test
 ```
+
+This command automatically detects your environment and runs all integration tests appropriately.
 
 ## Test Coverage
 

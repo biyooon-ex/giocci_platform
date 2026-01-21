@@ -10,7 +10,7 @@ GiocciEngine is the execution engine component of the Giocci system that receive
 
 ## How to run giocci_engine on your server
 
-1. Copy `./config` and `./docker-compose.yml` to your working directory
+1. Download `./config` and `./docker-compose.yml` to your working directory
 
 2. Edit `config/zenoh.json` to configure Zenoh connection:
    - Set `connect.endpoints` to your Zenohd server address (e.g., `["tcp/192.168.1.100:7447"]`)

@@ -20,7 +20,7 @@ GiocciRelay is a relay component for the Giocci system that forwards messages be
 
 4. Start the relay:
    ```bash
-   docker compose up -d
+   docker compose up -d giocci_relay
    ```
 
 5. Check logs:
@@ -32,7 +32,7 @@ GiocciRelay is a relay component for the Giocci system that forwards messages be
 
 Stop the relay:
 ```bash
-docker compose down
+docker compose down giocci_relay
 ```
 
 Restart the relay:
@@ -42,8 +42,8 @@ docker compose restart giocci_relay
 
 Update to the latest version:
 ```bash
-docker compose pull
-docker compose up -d
+docker compose pull giocci_relay
+docker compose up -d giocci_relay
 ```
 
 ## Configuration

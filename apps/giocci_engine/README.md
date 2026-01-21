@@ -22,7 +22,7 @@ GiocciEngine is the execution engine component of the Giocci system that receive
 
 4. Start the engine:
    ```bash
-   docker compose up -d
+   docker compose up -d giocci_engine
    ```
 
 5. Check logs:
@@ -34,7 +34,7 @@ GiocciEngine is the execution engine component of the Giocci system that receive
 
 Stop the engine:
 ```bash
-docker compose down
+docker compose down giocci_engine
 ```
 
 Restart the engine:
@@ -44,8 +44,8 @@ docker compose restart giocci_engine
 
 Update to the latest version:
 ```bash
-docker compose pull
-docker compose up -d
+docker compose pull giocci_engine
+docker compose up -d giocci_engine
 ```
 
 ## Configuration

@@ -16,7 +16,6 @@ defmodule Giocci.Sample.Test do
     Logger.info("exec_func/2 success!")
 
     :ok = Giocci.exec_func_async(relay_name, mfargs, self())
-    Logger.info("exec_func_async/3 success!")
 
     receive do
       {:giocci, 3} ->

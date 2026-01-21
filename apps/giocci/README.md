@@ -143,7 +143,6 @@ The Docker environment is provided for troubleshooting network connectivity issu
    2026-01-14 05:33:10.537 [info] save_module/2 success!
    2026-01-14 05:33:10.555 [info] exec_func/2 success!
    2026-01-14 05:33:10.556 [info] exec_func_async/3 success!
-   2026-01-14 05:33:10.569 [info] exec_func_async/3 success!
    :ok
    ```
 

@@ -27,17 +27,17 @@ RUN mix release giocci_client
 FROM ubuntu:noble-20251013 AS runner
 
 # Create non-root user
-RUN groupadd -r giocci && \
-  useradd -r -g giocci giocci
+RUN groupadd -r giocci_client && \
+  useradd -r -g giocci_client giocci_client
 
 WORKDIR /app
-USER giocci
+USER giocci_client
 
 ENV MIX_ENV=prod
 ENV LANG=C.UTF-8
 
 # Copy release from builder
-COPY --from=builder --chown=giocci:giocci /app/_build/prod/rel/giocci_client ./
+COPY --from=builder --chown=giocci_client:giocci_client /app/_build/prod/rel/giocci_client ./
 
 # Use ENTRYPOINT and CMD for flexibility
 ENTRYPOINT ["/app/bin/giocci_client"]

@@ -27,17 +27,17 @@ RUN mix release giocci_relay
 FROM ubuntu:noble-20251013 AS runner
 
 # Create non-root user
-RUN groupadd -r giocci && \
-  useradd -r -g giocci giocci
+RUN groupadd -r giocci_relay && \
+  useradd -r -g giocci_relay giocci_relay
 
 WORKDIR /app
-USER giocci
+USER giocci_relay
 
 ENV MIX_ENV=prod
 ENV LANG=C.UTF-8
 
 # Copy release from builder
-COPY --from=builder --chown=giocci:giocci /app/_build/prod/rel/giocci_relay ./
+COPY --from=builder --chown=giocci_relay:giocci_relay /app/_build/prod/rel/giocci_relay ./
 
 # Use ENTRYPOINT and CMD for flexibility
 ENTRYPOINT ["/app/bin/giocci_relay"]

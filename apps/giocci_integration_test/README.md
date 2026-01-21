@@ -1,9 +1,9 @@
 # GiocciIntegrationTest
 
-Integration test suite for Giocci.
+Integration test suite for GiocciPlatform.
 
 This application contains integration tests that verify the interaction between
-Giocci components (client, relay, and engine). It includes a test module
+GiocciPlatform components (client, relay, and engine). It includes a test module
 (`GiocciIntegrationTest`) that is used to test module distribution and remote
 execution across the system.
 

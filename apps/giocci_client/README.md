@@ -1,6 +1,6 @@
 # GiocciClient
 
-GiocciClient is an Elixir library for interacting with the Giocci distributed computation platform. It allows you to save Elixir modules to remote engines and execute their functions across the network.
+GiocciClient is an Elixir library for interacting with the GiocciPlatform. It allows you to save Elixir modules to remote engines and execute their functions across the network.
 
 ## Installation
 
@@ -180,4 +180,4 @@ See the [HexDocs](https://hexdocs.pm/giocci_client) for detailed API documentati
 
 ## Architecture
 
-For information about the overall Giocci architecture and communication flows, see the [main README](https://github.com/biyooon-ex/giocci/blob/main/README.md).
+For information about the overall GiocciPlatform architecture and communication flows, see the [main README](https://github.com/biyooon-ex/giocci_platform/blob/main/README.md).

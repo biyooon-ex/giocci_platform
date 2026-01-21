@@ -1,6 +1,6 @@
 # For Developers
 
-This document provides instructions for developers working on the Giocci project.
+This document provides instructions for developers working on the GiocciPlatform project.
 
 ## Testing
 

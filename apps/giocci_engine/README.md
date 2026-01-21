@@ -1,6 +1,6 @@
 # GiocciEngine
 
-GiocciEngine is the execution engine component of the Giocci system that receives modules from GiocciClient (via GiocciRelay) and executes their functions on demand. It loads modules dynamically and processes both synchronous and asynchronous function execution requests from clients.
+GiocciEngine is the execution engine component of the GiocciPlatform that receives modules from GiocciClient (via GiocciRelay) and executes their functions on demand. It loads modules dynamically and processes both synchronous and asynchronous function execution requests from clients.
 
 ## Prerequisites
 

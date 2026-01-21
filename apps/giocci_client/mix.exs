@@ -38,7 +38,7 @@ defmodule GiocciClient.MixProject do
   end
 
   defp description() do
-    "Client library for Giocci (computational resource permeating wide-area distributed platform towards the B5G era)"
+    "Client library for GiocciPlatform (computational resource permeating wide-area distributed system towards the B5G era)"
   end
 
   defp package() do
@@ -46,7 +46,7 @@ defmodule GiocciClient.MixProject do
       # These are the default files included in the package
       files: ~w(lib .formatter.exs mix.exs README* LICENSE*),
       licenses: ["Apache-2.0"],
-      links: %{"GitHub" => "https://github.com/biyooon-ex/giocci"}
+      links: %{"GitHub" => "https://github.com/biyooon-ex/giocci_platform"}
     ]
   end
 

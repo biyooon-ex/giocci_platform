@@ -1,6 +1,6 @@
 # GiocciRelay
 
-GiocciRelay is a relay component for the Giocci system that forwards messages between Zenoh networks.
+GiocciRelay is a relay component for the GiocciPlatform that forwards messages between Zenoh networks.
 
 ## Prerequisites
 

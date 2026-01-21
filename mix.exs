@@ -1,4 +1,4 @@
-defmodule Giocci.MixProject do
+defmodule GiocciPlatform.MixProject do
   use Mix.Project
 
   def project do

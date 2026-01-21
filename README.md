@@ -1,14 +1,14 @@
 [![Hex version](https://img.shields.io/hexpm/v/giocci.svg "Hex version")](https://hex.pm/packages/giocci)
 [![API docs](https://img.shields.io/hexpm/v/giocci.svg?label=hexdocs "API docs")](https://hexdocs.pm/giocci)
-[![License](https://img.shields.io/hexpm/l/giocci.svg)](https://github.com/b5g-ex/giocci/blob/main/LICENSE)
+[![License](https://img.shields.io/hexpm/l/giocci.svg)](https://github.com/biyooon-ex/giocci_platform/blob/main/LICENSE)
 
-# Giocci
+# GiocciPlatform
 
-Giocci is a computational resource permeating wide-area distributed platform towards the B5G era.
+GiocciPlatform is a computational resource permeating wide-area distributed system towards the B5G era.
 
 ## Overview
 
-This repository contains the Giocci platform, which enables distributed code execution across wide-area networks. The platform consists of three main components and an integration test suite:
+This repository contains the GiocciPlatform, which enables distributed code execution across wide-area networks. The platform consists of three main components and an integration test suite:
 
 - **GiocciClient** - Client library for sending modules and executing functions on remote engines
 - **GiocciRelay** - Relay component that manages client/engine registration and routes requests

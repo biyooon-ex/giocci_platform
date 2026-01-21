@@ -1,4 +1,4 @@
-defmodule GiocciClient.SessionManager do
+defmodule Giocci.SessionManager do
   @moduledoc false
 
   use GenServer

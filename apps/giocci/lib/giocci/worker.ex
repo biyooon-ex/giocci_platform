@@ -1,10 +1,10 @@
-defmodule GiocciClient.Worker do
+defmodule Giocci.Worker do
   @moduledoc false
 
   use GenServer
 
-  alias GiocciClient.ExecFuncAsyncStore
-  alias GiocciClient.Utils
+  alias Giocci.ExecFuncAsyncStore
+  alias Giocci.Utils
 
   @name __MODULE__
   @default_timeout 5000
@@ -62,7 +62,7 @@ defmodule GiocciClient.Worker do
     key_prefix = state.key_prefix
     registered_relays = state.registered_relays
 
-    session_id = GiocciClient.SessionManager.session_id()
+    session_id = Giocci.SessionManager.session_id()
 
     timeout = Keyword.fetch!(opts, :timeout)
 
@@ -88,7 +88,7 @@ defmodule GiocciClient.Worker do
     key_prefix = state.key_prefix
     registered_relays = state.registered_relays
 
-    session_id = GiocciClient.SessionManager.session_id()
+    session_id = Giocci.SessionManager.session_id()
 
     timeout = Keyword.fetch!(opts, :timeout)
 
@@ -117,7 +117,7 @@ defmodule GiocciClient.Worker do
     key_prefix = state.key_prefix
     registered_relays = state.registered_relays
 
-    session_id = GiocciClient.SessionManager.session_id()
+    session_id = Giocci.SessionManager.session_id()
 
     timeout = Keyword.fetch!(opts, :timeout)
 
@@ -149,7 +149,7 @@ defmodule GiocciClient.Worker do
     key_prefix = state.key_prefix
     registered_relays = state.registered_relays
 
-    session_id = GiocciClient.SessionManager.session_id()
+    session_id = Giocci.SessionManager.session_id()
 
     timeout = Keyword.fetch!(opts, :timeout)
 
@@ -188,7 +188,7 @@ defmodule GiocciClient.Worker do
     with {:ok, recv_term} <- Utils.decode(binary),
          {:ok, %{exec_id: exec_id, result: result}} <- recv_term,
          %{server: server, subscriber_id: subscriber_id} <- ExecFuncAsyncStore.get(exec_id) do
-      send(server, {:giocci_client, result})
+      send(server, {:giocci, result})
       :ok = ExecFuncAsyncStore.delete(exec_id)
       :ok = Zenohex.Subscriber.undeclare(subscriber_id)
     end

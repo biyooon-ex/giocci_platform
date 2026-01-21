@@ -45,7 +45,7 @@ This script verifies that version numbers in `mix.exs`, `VERSIONS`, and other co
 
 ### Build and Push Docker Images
 
-Build and push all application Docker images (giocci_client, giocci_relay, giocci_engine):
+Build and push all application Docker images (giocci, giocci_relay, giocci_engine):
 
 ```bash
 ./bin/build_and_push_app_images.sh
@@ -58,7 +58,7 @@ This script:
 
 ### Publish to Hex
 
-Publish the giocci_client package to Hex.pm:
+Publish the giocci package to Hex.pm:
 
 ```bash
 mix hex.publish

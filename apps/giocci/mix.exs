@@ -1,9 +1,9 @@
-defmodule GiocciClient.MixProject do
+defmodule Giocci.MixProject do
   use Mix.Project
 
   def project do
     [
-      app: :giocci_client,
+      app: :giocci,
       version: "0.3.0",
       build_path: "./_build",
       config_path: "./config/config.exs",
@@ -24,7 +24,7 @@ defmodule GiocciClient.MixProject do
   def application do
     [
       extra_applications: [:logger],
-      mod: {GiocciClient.Application, []}
+      mod: {Giocci.Application, []}
     ]
   end
 
@@ -65,11 +65,11 @@ defmodule GiocciClient.MixProject do
 
   def releases do
     [
-      giocci_client: [
+      giocci: [
         include_executables_for: [:unix],
-        applications: [giocci_client: :permanent],
+        applications: [giocci: :permanent],
         config_providers: [
-          {Config.Reader, {:system, "RELEASE_ROOT", "/giocci_client.exs"}}
+          {Config.Reader, {:system, "RELEASE_ROOT", "/giocci.exs"}}
         ]
       ]
     ]

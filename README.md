@@ -10,7 +10,7 @@ GiocciPlatform is a computational resource permeating wide-area distributed syst
 
 This repository contains the GiocciPlatform, which enables distributed code execution across wide-area networks. The platform consists of three main components and an integration test suite:
 
-- **GiocciClient** - Client library for sending modules and executing functions on remote engines
+- **Giocci** - Client library for sending modules and executing functions on remote engines
 - **GiocciRelay** - Relay component that manages client/engine registration and routes requests
 - **GiocciEngine** - Execution engine that loads modules and executes functions
 - **GiocciIntegrationTest** - Integration test suite that verifies end-to-end functionality across all components
@@ -19,16 +19,16 @@ All components communicate over [Zenoh](https://zenoh.io/), a pub/sub/query prot
 
 ## Components
 
-### GiocciClient
+### Giocci
 
 An Elixir library that allows applications to:
 - Register with a relay
 - Save Elixir modules to remote engines
 - Execute functions synchronously or asynchronously
 
-**Installation and usage**: See [apps/giocci_client/README.md](apps/giocci_client/README.md)
+**Installation and usage**: See [apps/giocci/README.md](apps/giocci/README.md)
 
-**Hex package**: [giocci_client](https://hex.pm/packages/giocci_client)
+**Hex package**: [giocci](https://hex.pm/packages/giocci)
 
 ### GiocciRelay
 
@@ -69,15 +69,15 @@ All components require:
 
 2. **Deploy GiocciEngine**: Follow [apps/giocci_engine/README.md](apps/giocci_engine/README.md)
 
-3. **Try it out**: Follow the "Running with Docker" section in [apps/giocci_client/README.md](apps/giocci_client/README.md) to test the platform
+3. **Try it out**: Follow the "Running with Docker" section in [apps/giocci/README.md](apps/giocci/README.md) to test the platform
 
-4. **Use in your application**: Once you're familiar with the platform, integrate GiocciClient into your Elixir application. See the [Installation](apps/giocci_client/README.md#installation) and [Usage](apps/giocci_client/README.md#usage) sections in the GiocciClient README
+4. **Use in your application**: Once you're familiar with the platform, integrate Giocci into your Elixir application. See the [Installation](apps/giocci/README.md#installation) and [Usage](apps/giocci/README.md#usage) sections in the Giocci README
 
 ## Architecture
 
 ### Components
 
-- Client: `apps/giocci_client`
+- Client: `apps/giocci`
 - Relay: `apps/giocci_relay`
 - Engine: `apps/giocci_engine`
 - Transport: Zenohex (Zenoh) session
@@ -177,7 +177,7 @@ sequenceDiagram
   Client->>Engine: Put giocci/exec_func_async/client/{engine}
   Engine->>Engine: exec and build result
   Engine->>Client: Put giocci/exec_func_async/engine/{client}
-  Client->>Client: send {:giocci_client, result}
+  Client->>Client: send {:giocci, result}
 ```
 
 ### Notes

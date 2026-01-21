@@ -1,11 +1,11 @@
 services:
-  giocci_client:
-    image: ghcr.io/biyooon-ex/giocci_platform/giocci_client:0.3.0
+  giocci:
+    image: ghcr.io/biyooon-ex/giocci_platform/giocci:0.3.0
     build:
       context: ./
       dockerfile: ./Dockerfile
     volumes:
-      - ./config/giocci_client.exs:/app/giocci_client.exs:ro
+      - ./config/giocci.exs:/app/giocci.exs:ro
       - ./config/DEFAULT_CONFIG.json5:/app/zenoh.json:ro
     restart: "always"
     stdin_open: true

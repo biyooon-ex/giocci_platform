@@ -162,7 +162,7 @@ defmodule CheckVersions do
     project_version = versions["PROJECT_VERSION"]
 
     [
-      "apps/giocci_client/docker-compose.yml",
+      "apps/giocci/docker-compose.yml",
       "apps/giocci_engine/docker-compose.yml",
       "apps/giocci_relay/docker-compose.yml"
     ]
@@ -240,7 +240,7 @@ defmodule CheckVersions do
     zenohex_version = versions["ZENOHEX_VERSION"]
 
     [
-      "apps/giocci_client/mix.exs",
+      "apps/giocci/mix.exs",
       "apps/giocci_engine/mix.exs",
       "apps/giocci_relay/mix.exs"
     ]

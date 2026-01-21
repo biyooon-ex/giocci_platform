@@ -1,4 +1,4 @@
-defmodule GiocciClient.ExecFuncAsyncStore do
+defmodule Giocci.ExecFuncAsyncStore do
   @moduledoc false
 
   use GenServer

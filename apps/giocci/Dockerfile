@@ -21,24 +21,24 @@ RUN mix deps.compile
 # Copy application source
 COPY lib ./lib
 RUN mix compile
-RUN mix release giocci_client
+RUN mix release giocci
 
 # Runtime stage
 FROM ubuntu:noble-20251013 AS runner
 
 # Create non-root user
-RUN groupadd -r giocci_client && \
-  useradd -r -g giocci_client giocci_client
+RUN groupadd -r giocci && \
+  useradd -r -g giocci giocci
 
 WORKDIR /app
-USER giocci_client
+USER giocci
 
 ENV MIX_ENV=prod
 ENV LANG=C.UTF-8
 
 # Copy release from builder
-COPY --from=builder --chown=giocci_client:giocci_client /app/_build/prod/rel/giocci_client ./
+COPY --from=builder --chown=giocci:giocci /app/_build/prod/rel/giocci ./
 
 # Use ENTRYPOINT and CMD for flexibility
-ENTRYPOINT ["/app/bin/giocci_client"]
+ENTRYPOINT ["/app/bin/giocci"]
 CMD ["start_iex"]

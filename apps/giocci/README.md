@@ -1,25 +1,25 @@
-# GiocciClient
+# Giocci
 
-GiocciClient is an Elixir library for interacting with the GiocciPlatform. It allows you to save Elixir modules to remote engines and execute their functions across the network.
+Giocci is an Elixir library for interacting with the GiocciPlatform. It allows you to save Elixir modules to remote engines and execute their functions across the network.
 
 ## Installation
 
-Add `giocci_client` to your list of dependencies in `mix.exs`:
+Add `giocci` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
   [
-    {:giocci_client, "~> 0.3.0"}
+    {:giocci, "~> 0.3.0"}
   ]
 end
 ```
 
 ## Configuration
 
-Configure GiocciClient in your `config/config.exs`:
+Configure Giocci in your `config/config.exs`:
 
 ```elixir
-config :giocci_client,
+config :giocci,
   zenoh_config_file_path: "path/to/zenoh.json",   # Path to Zenoh configuration
   client_name: "my_client",                       # Unique client identifier
   key_prefix: ""                                  # Optional key prefix for Zenoh keys
@@ -38,7 +38,7 @@ config :giocci_client,
 Register your client with a relay:
 
 ```elixir
-:ok = GiocciClient.register_client("my_relay")
+:ok = Giocci.register_client("my_relay")
 ```
 
 ### 2. Save Module
@@ -51,7 +51,7 @@ defmodule MyModule do
   def multiply(a, b), do: a * b
 end
 
-:ok = GiocciClient.save_module("my_relay", MyModule)
+:ok = Giocci.save_module("my_relay", MyModule)
 ```
 
 ### 3. Execute Function (Synchronous)
@@ -60,7 +60,7 @@ Execute a function on a remote engine:
 
 ```elixir
 # Execute MyModule.add(1, 2)
-result = GiocciClient.exec_func("my_relay", {MyModule, :add, [1, 2]})
+result = Giocci.exec_func("my_relay", {MyModule, :add, [1, 2]})
 # => 3
 ```
 
@@ -78,11 +78,11 @@ defmodule MyServer do
 
   def init(_) do
     # Execute async function
-    :ok = GiocciClient.exec_func_async("my_relay", {MyModule, :multiply, [3, 4]}, self())
+    :ok = Giocci.exec_func_async("my_relay", {MyModule, :multiply, [3, 4]}, self())
     {:ok, %{}}
   end
 
-  def handle_info({:giocci_client, result}, state) do
+  def handle_info({:giocci, result}, state) do
     IO.puts("Received result: #{result}")
     # => "Received result: 12"
     {:noreply, state}
@@ -99,12 +99,12 @@ All functions accept an optional `opts` keyword list:
 Example:
 
 ```elixir
-GiocciClient.exec_func("my_relay", {MyModule, :add, [1, 2]}, timeout: 10_000)
+Giocci.exec_func("my_relay", {MyModule, :add, [1, 2]}, timeout: 10_000)
 ```
 
 ## Running with Docker (for Testing)
 
-The Docker environment is provided for troubleshooting network connectivity issues between GiocciClient, GiocciRelay, and GiocciEngine.
+The Docker environment is provided for troubleshooting network connectivity issues between Giocci, GiocciRelay, and GiocciEngine.
 
 ### Prerequisites
 
@@ -115,26 +115,26 @@ The Docker environment is provided for troubleshooting network connectivity issu
 
 ### Setup and Testing
 
-1. Navigate to the giocci_client directory:
+1. Navigate to the giocci directory:
    ```bash
-   cd apps/giocci_client
+   cd apps/giocci
    ```
 
 2. Edit `config/zenoh.json` to configure Zenoh connection:
    - Set `connect.endpoints` to your Zenohd server address (e.g., `["tcp/192.168.1.100:7447"]`)
 
-3. Edit `config/giocci_client.exs` to configure the client:
+3. Edit `config/giocci.exs` to configure the client:
    - Set `client_name` to identify this client instance
    - Ensure `relay_name` in the config matches your running GiocciRelay instance
 
 4. Start the client with IEx shell:
    ```bash
-   docker compose run --rm giocci_client
+   docker compose run --rm giocci
    ```
 
 5. In the IEx shell, run the test:
    ```elixir
-   iex(giocci_client@hostname)> GiocciClient.Sample.Test.exec("giocci_relay")
+   iex(giocci@hostname)> Giocci.Sample.Test.exec("giocci_relay")
    ```
 
    Expected output:
@@ -176,7 +176,7 @@ Common issues:
 
 ## API Reference
 
-See the [HexDocs](https://hexdocs.pm/giocci_client) for detailed API documentation.
+See the [HexDocs](https://hexdocs.pm/giocci) for detailed API documentation.
 
 ## Architecture
 

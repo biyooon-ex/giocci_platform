@@ -28,7 +28,7 @@ defmodule GiocciIntegrationTest.MixProject do
     [
       {:giocci_relay, in_umbrella: true},
       {:giocci_engine, in_umbrella: true},
-      {:giocci_client, in_umbrella: true}
+      {:giocci, in_umbrella: true}
     ]
   end
 

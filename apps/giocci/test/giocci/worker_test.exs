@@ -1,34 +1,34 @@
-defmodule GiocciClient.WorkerTest do
+defmodule Giocci.WorkerTest do
   use ExUnit.Case
   import Mock
 
   setup_with_mocks([
-    {GiocciClient.SessionManager, [], [session_id: fn -> :dummy_session_id end]}
+    {Giocci.SessionManager, [], [session_id: fn -> :dummy_session_id end]}
   ]) do
     :ok
   end
 
   setup do
-    pid = start_supervised!({GiocciClient.Worker, [client_name: "giocci_client"]})
+    pid = start_supervised!({Giocci.Worker, [client_name: "giocci"]})
 
     %{worker_pid: pid}
   end
 
   test "register_client/3" do
     assert {:error, "zenohex_error: badarg"} =
-             GiocciClient.Worker.register_client("missing-relay")
+             Giocci.Worker.register_client("missing-relay")
   end
 
   test "save_module/3 returns error for unregistered relay" do
     assert {:error, "relay_not_registered"} =
-             GiocciClient.Worker.save_module("missing-relay", GiocciClient.Worker)
+             Giocci.Worker.save_module("missing-relay", Giocci.Worker)
   end
 
   test "exec_func/3 returns error for unregistered relay" do
     assert {:error, "relay_not_registered"} =
-             GiocciClient.Worker.exec_func(
+             Giocci.Worker.exec_func(
                "missing-relay",
-               {GiocciClient.Worker, :start_link, [[]]}
+               {Giocci.Worker, :start_link, [[]]}
              )
   end
 
@@ -37,9 +37,9 @@ defmodule GiocciClient.WorkerTest do
       %{state | registered_relays: ["relay-1"]}
     end)
 
-    missing_module = Module.concat(["GiocciClient", "MissingModule"])
+    missing_module = Module.concat(["Giocci", "MissingModule"])
 
     assert {:error, "module_not_found"} =
-             GiocciClient.Worker.save_module("relay-1", missing_module)
+             Giocci.Worker.save_module("relay-1", missing_module)
   end
 end

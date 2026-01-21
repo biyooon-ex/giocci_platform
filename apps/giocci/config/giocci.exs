@@ -1,4 +1,4 @@
-# This config is an example for GiocciClient Docker image
+# This config is an example for Giocci Docker image
 import Config
 
 config :logger, :default_formatter,
@@ -7,11 +7,11 @@ config :logger, :default_formatter,
 
 # Path to Zenoh configuration in docker image
 # Important: This must match the volume mount destination in docker-compose.yml
-config :giocci_client, zenoh_config_file_path: "/app/zenoh.json"
+config :giocci, zenoh_config_file_path: "/app/zenoh.json"
 
 # Unique client identifier
-config :giocci_client, client_name: "giocci_client"
+config :giocci, client_name: "giocci"
 
 # Optional key prefix for Zenoh keys
 # Important: This must match the key_prefix in relay and engine configurations
-config :giocci_client, key_prefix: ""
+config :giocci, key_prefix: ""

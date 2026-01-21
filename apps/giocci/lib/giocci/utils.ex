@@ -1,4 +1,4 @@
-defmodule GiocciClient.Utils do
+defmodule Giocci.Utils do
   @moduledoc false
 
   def zenohex_get(session_id, key, timeout, payload) do

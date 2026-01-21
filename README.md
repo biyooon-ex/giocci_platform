@@ -8,11 +8,12 @@ Giocci is a computational resource permeating wide-area distributed platform tow
 
 ## Overview
 
-This repository contains the Giocci platform, which enables distributed code execution across wide-area networks. The platform consists of three main components:
+This repository contains the Giocci platform, which enables distributed code execution across wide-area networks. The platform consists of three main components and an integration test suite:
 
 - **GiocciClient** - Client library for sending modules and executing functions on remote engines
 - **GiocciRelay** - Relay component that manages client/engine registration and routes requests
 - **GiocciEngine** - Execution engine that loads modules and executes functions
+- **GiocciIntegrationTest** - Integration test suite that verifies end-to-end functionality across all components
 
 All components communicate over [Zenoh](https://zenoh.io/), a pub/sub/query protocol for distributed systems.
 
@@ -46,6 +47,16 @@ An execution engine that:
 - Returns results synchronously or asynchronously
 
 **Deployment guide**: See [apps/giocci_engine/README.md](apps/giocci_engine/README.md)
+
+### GiocciIntegrationTest
+
+An integration test suite that:
+- Verifies end-to-end functionality across all components
+- Tests client registration, module distribution, and remote execution
+- Validates error handling when components are unavailable
+- Includes both synchronous and asynchronous execution scenarios
+
+**Test guide**: See [apps/giocci_integration_test/README.md](apps/giocci_integration_test/README.md)
 
 ## Prerequisites
 

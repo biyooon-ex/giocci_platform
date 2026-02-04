@@ -1,0 +1,15 @@
+services:
+  giocci_engine:
+    image: ghcr.io/biyooon-ex/giocci_platform/giocci_engine:0.3.0
+    build:
+      context: ./
+      dockerfile: ./Dockerfile
+    volumes:
+      - ./config/giocci_engine.exs:/app/giocci_engine.exs:ro
+      - ./config/zenoh.json5:/app/zenoh.json5:ro
+    restart: "always"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"

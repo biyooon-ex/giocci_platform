@@ -1,0 +1,9 @@
+services:
+  zenohd:
+    build: .
+    image: ghcr.io/biyooon-ex/giocci_platform/zenohd:1.7.2
+    volumes:
+      - .:/app
+    ports:
+      - "7447:7447"
+      - "7446:7446/udp"

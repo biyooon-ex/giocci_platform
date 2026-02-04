@@ -1,89 +1,84 @@
 name: CI
 
-env:
-  OTP_VERSION: 27.1.2
-  ELIXIR_VERSION: 1.17.3
-  MIX_ENV: test
-
-# based https://github.com/erlef/setup-beam
-
 on:
-  pull_request:
   push:
-    branches:
-      - main
+  pull_request:
 
 jobs:
-  build-deps:
+  test:
     runs-on: ubuntu-latest
-
+    permissions:
+      contents: read
+      packages: read
+    container:
+      image: ghcr.io/biyooon-ex/giocci_platform/zenohd:1.7.2
+    env:
+      MIX_ENV: test
     steps:
       - uses: actions/checkout@v4
 
-      - uses: erlef/setup-beam@v1
-        id: setup-beam
-        with:
-          otp-version: ${{env.OTP_VERSION}}
-          elixir-version: ${{env.ELIXIR_VERSION}}
-
-      - uses: actions/cache@v4
-        id: save-deps-cache
+      - name: Cache deps and build
+        uses: actions/cache@v4
         with:
           path: |
             deps
             _build
-          key: deps-${{ runner.os }}-${{ steps.setup-beam.outputs.otp-version }}-${{ steps.setup-beam.outputs.elixir-version }}-${{ hashFiles('**/*.lock') }}
+          key: ${{ runner.os }}-mix-${{ env.MIX_ENV }}-${{ hashFiles('.tool-versions') }}-${{ hashFiles('**/mix.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-mix-${{ env.MIX_ENV }}-${{ hashFiles('.tool-versions') }}-
+            ${{ runner.os }}-mix-
 
-      - name: build deps
-        if: steps.save-deps-cache.outputs.cache-hit != 'true'
-        run: mix do deps.get, deps.compile
+      - name: Prepare mix
+        run: |
+          mix local.hex --force
+          mix local.rebar --force
+
+      - name: Install dependencies
+        run: mix deps.get
+
+      - name: Run tests
+        run: |
+          mix test
 
   code-analysis:
-    needs: build-deps
     runs-on: ubuntu-latest
-
+    permissions:
+      contents: read
+    env:
+      MIX_ENV: dev
     steps:
       - uses: actions/checkout@v4
 
-      - uses: erlef/setup-beam@v1
-        id: setup-beam
+      - name: Set up BEAM
+        uses: erlef/setup-beam@v1
         with:
-          otp-version: ${{env.OTP_VERSION}}
-          elixir-version: ${{env.ELIXIR_VERSION}}
+          version-file: .tool-versions
+          version-type: strict
 
-      - uses: actions/cache/restore@v4
-        id: restore-deps-cache
+      - name: Cache deps and build
+        uses: actions/cache@v4
         with:
           path: |
             deps
             _build
-          key: deps-${{ runner.os }}-${{ steps.setup-beam.outputs.otp-version }}-${{ steps.setup-beam.outputs.elixir-version }}-${{ hashFiles('**/*.lock') }}
-          restore-keys: deps-${{ runner.os }}-${{ steps.setup-beam.outputs.otp-version }}-${{ steps.setup-beam.outputs.elixir-version }}-
+          key: ${{ runner.os }}-mix-${{ env.MIX_ENV }}-${{ hashFiles('.tool-versions') }}-${{ hashFiles('**/mix.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-mix-${{ env.MIX_ENV }}-${{ hashFiles('.tool-versions') }}-
+            ${{ runner.os }}-mix-
+
+      - name: Prepare mix
+        run: |
+          mix local.hex --force
+          mix local.rebar --force
+
+      - name: Install dependencies
+        run: mix deps.get
 
       - name: format
         run: mix format --check-formatted
 
-  compile:
-    needs: build-deps
-    runs-on: ubuntu-latest
+      - name: credo
+        run: mix credo
 
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: erlef/setup-beam@v1
-        id: setup-beam
-        with:
-          otp-version: ${{env.OTP_VERSION}}
-          elixir-version: ${{env.ELIXIR_VERSION}}
-
-      - uses: actions/cache/restore@v4
-        id: restore-deps-cache
-        with:
-          path: |
-            deps
-            _build
-          key: deps-${{ runner.os }}-${{ steps.setup-beam.outputs.otp-version }}-${{ steps.setup-beam.outputs.elixir-version }}-${{ hashFiles('**/*.lock') }}
-          restore-keys: deps-${{ runner.os }}-${{ steps.setup-beam.outputs.otp-version }}-${{ steps.setup-beam.outputs.elixir-version }}-
-
-      - name: compile
-        run: mix compile
+      - name: dialyzer
+        run: mix dialyzer

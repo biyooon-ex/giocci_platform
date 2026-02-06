@@ -1,9 +1,12 @@
 services:
   giocci_engine:
-    image: ghcr.io/biyooon-ex/giocci_platform/giocci_engine:0.3.0
+    image: ghcr.io/biyooon-ex/giocci_platform/giocci_engine:0.3.1-rc.0
     build:
       context: ./
       dockerfile: ./Dockerfile
+      platforms:
+        - "linux/amd64"
+        - "linux/arm64"
     volumes:
       - ./config/giocci_engine.exs:/app/giocci_engine.exs:ro
       - ./config/zenoh.json5:/app/zenoh.json5:ro

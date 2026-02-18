@@ -214,6 +214,36 @@ response_from_engine = %{
 
 ## 実装方針
 
+### API 仕様更新
+
+#### `Giocci` モジュール（`apps/giocci/lib/giocci.ex`）
+
+**`register_client/2` のスペック更新**
+```elixir
+# 更新前
+@spec register_client(String.t(), keyword()) :: :ok | {:error, reason :: term()}
+
+# 更新後
+@spec register_client(String.t(), keyword()) :: :ok | {:ok, map()} | {:error, reason :: term()}
+```
+
+- measure オプションなし、または処理成功時で measure: false → `:ok` を返す
+- measure: true で処理成功時 → `{:ok, measurements}` を返す（measurements は map）
+- エラー時 → `{:error, reason}` を返す（measure オプション有無に関わらず）
+
+**`save_module/3` のスペック更新**
+```elixir
+# 更新前
+@spec save_module(String.t(), module(), keyword()) :: :ok | {:error, reason :: term()}
+
+# 更新後
+@spec save_module(String.t(), module(), keyword()) :: :ok | {:ok, map()} | {:error, reason :: term()}
+```
+
+- measure オプションなし、または処理成功時で measure: false → `:ok` を返す
+- measure: true で処理成功時 → `{:ok, measurements}` を返す（measurements は map）
+- エラー時 → `{:error, reason}` を返す（measure オプション有無に関わらず）
+
 ### Client 層（`apps/giocci`）
 
 1. `Giocci.Worker.handle_call/3` で `measure` オプションを抽出
@@ -255,6 +285,27 @@ response_from_engine = %{
    - Zenohex でリクエストが到着した直後に `engine_recv_timestamp_from_relay = System.system_time(:millisecond)` を記録
    - 応答送信直前に `engine_send_timestamp_to_relay = System.system_time(:millisecond)` を記録
    - レスポンスペイロードに `measure`, `engine_send_timestamp_to_relay`, `engine_recv_timestamp_from_relay` を含める
+
+### 実装パターン - 疎結合設計
+
+既存実装への影響を最小化するため、以下のパターンで実装：
+
+1. **計測タイムスタンプ記録の独立化**
+   - 計測フラグの有無判定と、タイムスタンプ記録を既存の処理フロー外で実施
+   - 既存の `with` パイプラインは変更しない
+
+2. **計測値の後付け計算**
+   - 既存の処理（encode/decode/zenohex_get など）が成功した後、`measure: true` の場合のみ計測値を計算
+   - 既存処理の結果 (`:ok` / `{:error, reason}`) を基に、計測値マップを新規で構築
+
+3. **エラーハンドリングの独立性**
+   - 既存のエラーハンドリングパスは変更しない
+   - Error 発生時は計測データなしで従来通り `{:error, reason}` を返す
+   - 計測値がある場合（成功時かつ measure: true の場合）のみ `{:ok, measurements}` を返す
+
+4. **ペイロード処理の最小化**
+   - `measure` フラグや計測タイムスタンプを既存ペイロードに追加する際は、`Map.merge` や条件分岐で対応
+   - 既存のペイロード構造は変更しない
 
 ### 設計原則
 

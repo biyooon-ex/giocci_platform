@@ -42,21 +42,26 @@ defmodule GiocciRelay.ClientRegistrar do
         %Zenohex.Query{key_expr: register_client_key, payload: binary, zenoh_query: zenoh_query},
         %{register_client_key: register_client_key} = state
       ) do
+    relay_recv_timestamp_from_client = System.system_time(:millisecond)
     registered_clients = state.registered_clients
 
     {result, state} =
-      with {:ok, %{client_name: client_name}} <- Utils.decode(binary) do
-        Logger.debug("#{inspect(client_name)} registration completed successfully.")
-        registered_clients = [client_name | registered_clients] |> Enum.uniq()
-        {:ok, %{state | registered_clients: registered_clients}}
+      with {:ok, recv_term} <- Utils.decode(binary) do
+        map = maybe_measure(recv_term, relay_recv_timestamp_from_client)
+
+        Logger.debug("#{inspect(recv_term.client_name)} registration completed successfully.")
+        registered_clients = [recv_term.client_name | registered_clients] |> Enum.uniq()
+
+        map = maybe_measure(map)
+
+        {{:ok, map}, %{state | registered_clients: registered_clients}}
       else
         error ->
           Logger.error("Client registration failed by #{inspect(error)}.")
           {error, state}
       end
 
-    {:ok, binary} = Utils.encode(result)
-    :ok = Zenohex.Query.reply(zenoh_query, register_client_key, binary)
+    :ok = Utils.zenohex_reply(zenoh_query, register_client_key, result)
 
     {:noreply, state}
   end
@@ -71,4 +76,16 @@ defmodule GiocciRelay.ClientRegistrar do
 
     {:reply, result, state}
   end
+
+  defp maybe_measure(map = %{client_send_timestamp_to_relay: _}, relay_recv_timestamp_from_client) do
+    Map.put(map, :relay_recv_timestamp_from_client, relay_recv_timestamp_from_client)
+  end
+
+  defp maybe_measure(map = %{}, _relay_recv_timestamp_from_client), do: map
+
+  defp maybe_measure(map = %{client_send_timestamp_to_relay: _}) do
+    Map.put(map, :relay_send_timestamp_to_client, System.system_time(:millisecond))
+  end
+
+  defp maybe_measure(map = %{}), do: map
 end

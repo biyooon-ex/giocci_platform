@@ -65,19 +65,32 @@ defmodule Giocci.Worker do
     session_id = Giocci.SessionManager.session_id()
 
     timeout = Keyword.fetch!(opts, :timeout)
+    measure_to = Keyword.get(opts, :measure_to)
+    measure? = is_pid(measure_to)
 
     send_term = %{client_name: client_name}
 
     {result, state} =
       with key <- Path.join(key_prefix, "giocci/register/client/#{relay_name}"),
-           {:ok, binary} <- Utils.encode(send_term),
-           {:ok, binary} <- Utils.zenohex_get(session_id, key, timeout, binary),
-           {:ok, recv_term} <- Utils.decode(binary),
-           :ok <- recv_term do
+           {:ok, recv_term} <- Utils.zenohex_get(session_id, key, timeout, send_term, measure?) do
         registered_relays = [relay_name | registered_relays] |> Enum.uniq()
-        {:ok, %{state | registered_relays: registered_relays}}
+        state = %{state | registered_relays: registered_relays}
+        {recv_term, state}
       else
         error -> {error, state}
+      end
+
+    result =
+      case {result, measure?} do
+        {{:ok, %{}}, false} ->
+          :ok
+
+        {{:ok, measurements}, true} ->
+          send(measure_to, {:giocci_measurement, measurements})
+          :ok
+
+        _ ->
+          result
       end
 
     {:reply, result, state}
@@ -91,6 +104,8 @@ defmodule Giocci.Worker do
     session_id = Giocci.SessionManager.session_id()
 
     timeout = Keyword.fetch!(opts, :timeout)
+    measure_to = Keyword.get(opts, :measure_to)
+    measure? = is_pid(measure_to)
 
     send_term =
       %{
@@ -103,9 +118,7 @@ defmodule Giocci.Worker do
       with :ok <- validate_relay_registered(relay_name, registered_relays),
            :ok <- validate_module_found(module),
            key <- Path.join(key_prefix, "giocci/save_module/client/#{relay_name}"),
-           {:ok, binary} <- Utils.encode(send_term),
-           {:ok, binary} <- Utils.zenohex_get(session_id, key, timeout, binary),
-           {:ok, recv_term} <- Utils.decode(binary) do
+           {:ok, recv_term} <- Utils.zenohex_get(session_id, key, timeout, send_term, measure?) do
         recv_term
       end
 
@@ -120,6 +133,8 @@ defmodule Giocci.Worker do
     session_id = Giocci.SessionManager.session_id()
 
     timeout = Keyword.fetch!(opts, :timeout)
+    measure_to = Keyword.get(opts, :measure_to)
+    measure? = is_pid(measure_to)
 
     send_term =
       %{
@@ -130,14 +145,10 @@ defmodule Giocci.Worker do
     result =
       with :ok <- validate_relay_registered(relay_name, registered_relays),
            key <- Path.join(key_prefix, "giocci/inquiry_engine/client/#{relay_name}"),
-           {:ok, binary} <- Utils.encode(send_term),
-           {:ok, binary} <- Utils.zenohex_get(session_id, key, timeout, binary),
-           {:ok, recv_term} <- Utils.decode(binary),
+           {:ok, recv_term} <- Utils.zenohex_get(session_id, key, timeout, send_term, measure?),
            {:ok, %{engine_name: engine_name}} <- recv_term,
            key <- Path.join(key_prefix, "giocci/exec_func/client/#{engine_name}"),
-           {:ok, binary} <- Utils.encode(send_term),
-           {:ok, binary} <- Utils.zenohex_get(session_id, key, timeout, binary),
-           {:ok, recv_term} <- Utils.decode(binary) do
+           {:ok, recv_term} <- Utils.zenohex_get(session_id, key, timeout, send_term, measure?) do
         recv_term
       end
 
@@ -152,6 +163,8 @@ defmodule Giocci.Worker do
     session_id = Giocci.SessionManager.session_id()
 
     timeout = Keyword.fetch!(opts, :timeout)
+    measure_to = Keyword.get(opts, :measure_to)
+    measure? = is_pid(measure_to)
 
     exec_id = make_ref()
 
@@ -165,14 +178,12 @@ defmodule Giocci.Worker do
     result =
       with :ok <- validate_relay_registered(relay_name, registered_relays),
            key <- Path.join(key_prefix, "giocci/inquiry_engine/client/#{relay_name}"),
-           {:ok, send_binary} <- Utils.encode(send_term),
-           {:ok, recv_binary} <- Utils.zenohex_get(session_id, key, timeout, send_binary),
-           {:ok, recv_term} <- Utils.decode(recv_binary),
+           {:ok, recv_term} <- Utils.zenohex_get(session_id, key, timeout, send_term, measure?),
            {:ok, %{engine_name: engine_name}} <- recv_term,
            key <- Path.join(key_prefix, "giocci/exec_func_async/engine/#{client_name}"),
            {:ok, subscriber_id} <- Zenohex.Session.declare_subscriber(session_id, key),
            key <- Path.join(key_prefix, "giocci/exec_func_async/client/#{engine_name}"),
-           :ok <- Zenohex.Session.put(session_id, key, send_binary) do
+           :ok <- Utils.zenohex_put(session_id, key, send_term) do
         ExecFuncAsyncStore.put(exec_id, %{
           server: server,
           subscriber_id: subscriber_id,

@@ -8,8 +8,9 @@ defmodule Giocci do
 
   Options:
     - `:timeout` - Client call timeout in milliseconds.
+    - `:measure_to` - When set to a pid, sends measurement timestamps as `{:giocci_measurement, timestamps}` to that process.
   """
-  @spec register_client(String.t(), keyword()) :: :ok | {:error, reason :: term()}
+  @spec register_client(String.t(), keyword()) :: :ok | {:ok, map()} | {:error, reason :: term()}
   defdelegate register_client(relay_name, opts \\ []), to: Giocci.Worker
 
   @doc """

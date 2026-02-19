@@ -60,7 +60,7 @@ defmodule GiocciRelay.EngineRegistrar do
              Utils.encode(%{relay_name: relay_name, client_modules_map: client_modules_map}),
            {:ok, binary} <- Utils.zenohex_get(session_id, key, _timeout = 5000, binary),
            {:ok, recv_term} <- Utils.decode(binary),
-           :ok <- recv_term do
+           {:ok, _measurements} <- recv_term do
         Logger.debug("#{inspect(engine_name)} registration completed successfully.")
         registered_engines = [engine_name | registered_engines] |> Enum.uniq()
         state = %{state | registered_engines: registered_engines}

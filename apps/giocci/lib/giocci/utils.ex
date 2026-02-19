@@ -1,18 +1,13 @@
 defmodule Giocci.Utils do
   @moduledoc false
 
-  def zenohex_get(session_id, key, timeout, send_term, measure?) do
-    send_term = if measure?, do: send_measure(key, send_term), else: send_term
-
-    {:ok, payload} = encode(send_term)
+  def zenohex_get(session_id, key, timeout, send_term) do
+    {:ok, payload} = encode(add_send_measurements(key, send_term))
 
     case Zenohex.Session.get(session_id, key, timeout, payload: payload) do
       {:ok, [%Zenohex.Sample{payload: payload}]} ->
         {:ok, recv_term} = decode(payload)
-
-        recv_term = if measure?, do: recv_measure(key, recv_term), else: recv_term
-
-        {:ok, recv_term}
+        {:ok, add_recv_measurements(key, recv_term)}
 
       {:error, :timeout} ->
         operation = extract_operation_description(key)
@@ -97,29 +92,66 @@ defmodule Giocci.Utils do
     ArgumentError -> {:error, "decode_failed: payload may contain unknown atoms or unsafe terms"}
   end
 
-  defp send_measure(key, send_term) do
+  defp add_send_measurements(key, send_term) do
     cond do
       String.contains?(key, "/register/client/") ->
         Map.put(send_term, :client_send_timestamp_to_relay, System.system_time(:millisecond))
 
+      String.contains?(key, "/save_module/client/") ->
+        Map.put(send_term, :client_send_timestamp_to_relay, System.system_time(:millisecond))
+
+      String.contains?(key, "/inquiry_engine/client/") ->
+        Map.put(send_term, :client_send_timestamp_to_relay, System.system_time(:millisecond))
+
+      String.contains?(key, "/exec_func/client/") ->
+        Map.put(send_term, :client_send_timestamp_to_engine, System.system_time(:millisecond))
+
       true ->
-        send_term
+        raise "Unexpected condition reached"
     end
   end
 
-  defp recv_measure(key, recv_term) do
+  defp add_recv_measurements(key, recv_term) do
     case recv_term do
-      {:ok, map} ->
+      {:ok, map} when is_map(map) ->
         map =
           cond do
             String.contains?(key, "/register/client/") ->
               Map.put(map, :client_recv_timestamp_from_relay, System.system_time(:millisecond))
 
+            String.contains?(key, "/inquiry_engine/client/") ->
+              Map.put(map, :client_recv_timestamp_from_relay, System.system_time(:millisecond))
+
+            String.contains?(key, "/exec_func/client/") ->
+              Map.put(map, :client_recv_timestamp_from_engine, System.system_time(:millisecond))
+
             true ->
-              map
+              raise "Unexpected condition reached"
           end
 
         {:ok, map}
+
+      {:ok, list} when is_list(list) ->
+        cond do
+          String.contains?(key, "/save_module/client/") ->
+            Enum.map(list, fn
+              {:ok, map} ->
+                map =
+                  Map.put(
+                    map,
+                    :client_recv_timestamp_from_relay,
+                    System.system_time(:millisecond)
+                  )
+
+                {:ok, map}
+
+              error ->
+                error
+            end)
+
+          true ->
+            raise "Unexpected condition reached"
+        end
 
       recv_term ->
         recv_term

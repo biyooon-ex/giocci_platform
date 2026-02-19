@@ -46,21 +46,19 @@ defmodule GiocciRelay.ClientRegistrar do
     registered_clients = state.registered_clients
 
     {result, state} =
-      with {:ok, recv_term} <- Utils.decode(binary) do
-        map = maybe_measure(recv_term, relay_recv_timestamp_from_client)
-
-        Logger.debug("#{inspect(recv_term.client_name)} registration completed successfully.")
+      with {:ok, recv_term} <- Utils.decode(binary),
+           %{client_name: client_name} <- recv_term do
+        Logger.debug("#{inspect(client_name)} registration completed successfully.")
         registered_clients = [recv_term.client_name | registered_clients] |> Enum.uniq()
 
-        map = maybe_measure(map)
-
-        {{:ok, map}, %{state | registered_clients: registered_clients}}
+        {{:ok, recv_term}, %{state | registered_clients: registered_clients}}
       else
         error ->
           Logger.error("Client registration failed by #{inspect(error)}.")
           {error, state}
       end
 
+    result = maybe_squash(result, relay_recv_timestamp_from_client)
     :ok = Utils.zenohex_reply(zenoh_query, register_client_key, result)
 
     {:noreply, state}
@@ -77,15 +75,21 @@ defmodule GiocciRelay.ClientRegistrar do
     {:reply, result, state}
   end
 
-  defp maybe_measure(map = %{client_send_timestamp_to_relay: _}, relay_recv_timestamp_from_client) do
-    Map.put(map, :relay_recv_timestamp_from_client, relay_recv_timestamp_from_client)
+  defp maybe_squash(result, relay_recv_timestamp_from_client) do
+    case result do
+      {:ok, %{client_send_timestamp_to_relay: client_send_timestamp_to_relay}} ->
+        {:ok,
+         %{
+           client_send_timestamp_to_relay: client_send_timestamp_to_relay,
+           relay_recv_timestamp_from_client: relay_recv_timestamp_from_client,
+           relay_send_timestamp_to_client: System.system_time(:millisecond)
+         }}
+
+      {:ok, _recv_term} ->
+        :ok
+
+      result ->
+        result
+    end
   end
-
-  defp maybe_measure(map = %{}, _relay_recv_timestamp_from_client), do: map
-
-  defp maybe_measure(map = %{client_send_timestamp_to_relay: _}) do
-    Map.put(map, :relay_send_timestamp_to_client, System.system_time(:millisecond))
-  end
-
-  defp maybe_measure(map = %{}), do: map
 end

@@ -18,6 +18,11 @@ defmodule GiocciEngine.Utils do
     end
   end
 
+  def zenohex_reply(zenoh_query, key, term) do
+    {:ok, payload} = encode(term)
+    Zenohex.Query.reply(zenoh_query, key, payload)
+  end
+
   defp extract_operation_description(key) do
     cond do
       String.contains?(key, "/register/engine/") ->

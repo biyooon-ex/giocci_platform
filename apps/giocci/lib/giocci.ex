@@ -18,6 +18,7 @@ defmodule Giocci do
 
   Options:
     - `:timeout` - Client call timeout in milliseconds.
+    - `:measure_to` - When set to a pid, sends measurement timestamps as `{:giocci_measurement, timestamps}` to that process.
   """
   @spec save_module(String.t(), module(), keyword()) :: :ok | {:error, reason :: term()}
   defdelegate save_module(relay_name, module, opts \\ []), to: Giocci.Worker
@@ -27,6 +28,7 @@ defmodule Giocci do
 
   Options:
     - `:timeout` - Client call timeout in milliseconds.
+    - `:measure_to` - When set to a pid, sends measurement timestamps as `{:giocci_measurement, timestamps}` to that process.
   """
   @spec exec_func(String.t(), tuple(), keyword()) :: result :: term()
   defdelegate exec_func(relay_name, mfargs, opts \\ []), to: Giocci.Worker

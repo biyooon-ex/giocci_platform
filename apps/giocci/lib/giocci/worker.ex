@@ -66,13 +66,12 @@ defmodule Giocci.Worker do
 
     timeout = Keyword.fetch!(opts, :timeout)
     measure_to = Keyword.get(opts, :measure_to)
-    measure? = is_pid(measure_to)
 
     send_term = %{client_name: client_name}
 
     {result, state} =
       with key <- Path.join(key_prefix, "giocci/register/client/#{relay_name}"),
-           {:ok, recv_term} <- Utils.zenohex_get(session_id, key, timeout, send_term, measure?) do
+           {:ok, recv_term} <- Utils.zenohex_get(session_id, key, timeout, send_term) do
         registered_relays = [relay_name | registered_relays] |> Enum.uniq()
         state = %{state | registered_relays: registered_relays}
         {recv_term, state}
@@ -80,18 +79,7 @@ defmodule Giocci.Worker do
         error -> {error, state}
       end
 
-    result =
-      case {result, measure?} do
-        {{:ok, %{}}, false} ->
-          :ok
-
-        {{:ok, measurements}, true} ->
-          send(measure_to, {:giocci_measurement, measurements})
-          :ok
-
-        _ ->
-          result
-      end
+    result = maybe_send_measurements(result, measure_to)
 
     {:reply, result, state}
   end
@@ -105,7 +93,6 @@ defmodule Giocci.Worker do
 
     timeout = Keyword.fetch!(opts, :timeout)
     measure_to = Keyword.get(opts, :measure_to)
-    measure? = is_pid(measure_to)
 
     send_term =
       %{
@@ -118,9 +105,12 @@ defmodule Giocci.Worker do
       with :ok <- validate_relay_registered(relay_name, registered_relays),
            :ok <- validate_module_found(module),
            key <- Path.join(key_prefix, "giocci/save_module/client/#{relay_name}"),
-           {:ok, recv_term} <- Utils.zenohex_get(session_id, key, timeout, send_term, measure?) do
+           {:ok, recv_term} <- Utils.zenohex_get(session_id, key, timeout, send_term) do
+        # NOTE: recv_term is a list of {:ok, _} or {:error, _} tuples.
         recv_term
       end
+
+    result = maybe_send_measurements(result, measure_to)
 
     {:reply, result, state}
   end
@@ -134,7 +124,6 @@ defmodule Giocci.Worker do
 
     timeout = Keyword.fetch!(opts, :timeout)
     measure_to = Keyword.get(opts, :measure_to)
-    measure? = is_pid(measure_to)
 
     send_term =
       %{
@@ -145,12 +134,14 @@ defmodule Giocci.Worker do
     result =
       with :ok <- validate_relay_registered(relay_name, registered_relays),
            key <- Path.join(key_prefix, "giocci/inquiry_engine/client/#{relay_name}"),
-           {:ok, recv_term} <- Utils.zenohex_get(session_id, key, timeout, send_term, measure?),
+           {:ok, recv_term} <- Utils.zenohex_get(session_id, key, timeout, send_term),
            {:ok, %{engine_name: engine_name}} <- recv_term,
            key <- Path.join(key_prefix, "giocci/exec_func/client/#{engine_name}"),
-           {:ok, recv_term} <- Utils.zenohex_get(session_id, key, timeout, send_term, measure?) do
+           {:ok, recv_term} <- Utils.zenohex_get(session_id, key, timeout, send_term) do
         recv_term
       end
+
+    result = maybe_send_measurements(result, measure_to)
 
     {:reply, result, state}
   end
@@ -163,8 +154,6 @@ defmodule Giocci.Worker do
     session_id = Giocci.SessionManager.session_id()
 
     timeout = Keyword.fetch!(opts, :timeout)
-    measure_to = Keyword.get(opts, :measure_to)
-    measure? = is_pid(measure_to)
 
     exec_id = make_ref()
 
@@ -178,7 +167,7 @@ defmodule Giocci.Worker do
     result =
       with :ok <- validate_relay_registered(relay_name, registered_relays),
            key <- Path.join(key_prefix, "giocci/inquiry_engine/client/#{relay_name}"),
-           {:ok, recv_term} <- Utils.zenohex_get(session_id, key, timeout, send_term, measure?),
+           {:ok, recv_term} <- Utils.zenohex_get(session_id, key, timeout, send_term),
            {:ok, %{engine_name: engine_name}} <- recv_term,
            key <- Path.join(key_prefix, "giocci/exec_func_async/engine/#{client_name}"),
            {:ok, subscriber_id} <- Zenohex.Session.declare_subscriber(session_id, key),
@@ -220,6 +209,22 @@ defmodule Giocci.Worker do
       :ok
     else
       {:error, "relay_not_registered"}
+    end
+  end
+
+  # for save_module result
+  defp maybe_send_measurements(result, measure_to) when is_list(result) do
+    Enum.each(result, &maybe_send_measurements(&1, measure_to))
+  end
+
+  defp maybe_send_measurements(result, measure_to) do
+    case result do
+      {:ok, measurements} ->
+        if is_pid(measure_to), do: send(measure_to, {:giocci_measurement, measurements})
+        :ok
+
+      result ->
+        result
     end
   end
 end

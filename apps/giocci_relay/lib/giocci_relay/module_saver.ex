@@ -37,41 +37,43 @@ defmodule GiocciRelay.ModuleSaver do
         %Zenohex.Query{key_expr: save_module_key, payload: binary, zenoh_query: zenoh_query},
         %{save_module_key: save_module_key} = state
       ) do
+    relay_recv_timestamp_from_client = System.system_time(:millisecond)
     relay_name = state.relay_name
     key_prefix = state.key_prefix
 
     session_id = GiocciRelay.SessionManager.session_id()
 
     result =
-      with {:ok, recv_term} <- Utils.decode(binary),
-           {:ok, {module_object_code, timeout, client_name}} <- extract(recv_term),
+      with {:ok, term_from_client} <- Utils.decode(binary),
+           {:ok, {module_object_code, timeout, client_name}} <- extract(term_from_client),
            :ok <- GiocciRelay.ClientRegistrar.validate_registered(client_name),
            :ok <- GiocciRelay.ModuleStore.put(client_name, module_object_code) do
-        send_term = %{
+        term_to_engine = %{
+          client_send_timestamp_to_relay: term_from_client.client_send_timestamp_to_relay,
           relay_name: relay_name,
           client_modules_map: %{client_name => [module_object_code]}
         }
 
-        for engine_name <- GiocciRelay.EngineRegistrar.registered_engines() do
-          with key <- Path.join(key_prefix, "giocci/save_module/relay/#{engine_name}"),
-               {:ok, binary} <- Utils.encode(send_term),
-               {:ok, binary} <- Utils.zenohex_get(session_id, key, timeout, binary),
-               {:ok, recv_term} <- Utils.decode(binary) do
-            :ok = recv_term
+        term_from_engine_list =
+          for engine_name <- GiocciRelay.EngineRegistrar.registered_engines() do
+            with key <- Path.join(key_prefix, "giocci/save_module/relay/#{engine_name}"),
+                 {:ok, term_from_engine} <-
+                   Utils.zenohex_get2(session_id, key, timeout, term_to_engine) do
+              term_from_engine
+            end
           end
-        end
 
         {module, _binary, _filename} = module_object_code
         Logger.debug("#{inspect(module)} saved successfully, from #{inspect(client_name)}.")
-        :ok
+        {:ok, term_from_engine_list}
       else
         error ->
           Logger.error("Module save failed, #{inspect(error)}.")
           error
       end
 
-    {:ok, binary} = Utils.encode(result)
-    :ok = Zenohex.Query.reply(zenoh_query, save_module_key, binary)
+    result = maybe_squash(result, relay_recv_timestamp_from_client)
+    :ok = Utils.zenohex_reply(zenoh_query, save_module_key, result)
 
     {:noreply, state}
   end
@@ -86,5 +88,36 @@ defmodule GiocciRelay.ModuleSaver do
     {:ok, {module_object_code, timeout, client_name}}
   rescue
     MatchError -> {:error, "term_not_expected"}
+  end
+
+  defp maybe_squash(result, relay_recv_timestamp_from_client) do
+    case result do
+      {:ok, term_from_engine_list} ->
+        measurements_list =
+          Enum.map(term_from_engine_list, fn
+            {:ok, map} ->
+              map =
+                Map.take(map, [
+                  :engine_name,
+                  :client_send_timestamp_to_relay,
+                  :engine_recv_timestamp_from_relay,
+                  :engine_send_timestamp_to_relay
+                ])
+                |> Map.merge(%{
+                  relay_recv_timestamp_from_client: relay_recv_timestamp_from_client,
+                  relay_send_timestamp_to_client: System.system_time(:millisecond)
+                })
+
+              {:ok, map}
+
+            error ->
+              error
+          end)
+
+        {:ok, measurements_list}
+
+      result ->
+        result
+    end
   end
 end

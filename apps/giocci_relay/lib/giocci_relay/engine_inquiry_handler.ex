@@ -39,6 +39,8 @@ defmodule GiocciRelay.EngineInquiryHandler do
         %Zenohex.Query{key_expr: inquiry_engine_key, payload: binary, zenoh_query: zenoh_query},
         %{inquiry_engine_key: inquiry_engine_key} = state
       ) do
+    relay_recv_timestamp_from_client = System.system_time(:millisecond)
+
     result =
       with {:ok, recv_term} <- Utils.decode(binary),
            {:ok, {mfargs, client_name}} <- extract(recv_term),
@@ -48,15 +50,15 @@ defmodule GiocciRelay.EngineInquiryHandler do
           "#{inspect(engine_name)} is selected for #{inspect(client_name)}'s #{inspect(mfargs)}."
         )
 
-        {:ok, %{engine_name: engine_name}}
+        {:ok, Map.put(recv_term, :engine_name, engine_name)}
       else
         error ->
           Logger.error("Inquiry engine failed, #{inspect(error)}.")
           error
       end
 
-    {:ok, binary} = Utils.encode(result)
-    :ok = Zenohex.Query.reply(zenoh_query, inquiry_engine_key, binary)
+    result = maybe_squash(result, relay_recv_timestamp_from_client)
+    :ok = Utils.zenohex_reply(zenoh_query, inquiry_engine_key, result)
 
     {:noreply, state}
   end
@@ -70,5 +72,26 @@ defmodule GiocciRelay.EngineInquiryHandler do
     {:ok, {mfargs, client_name}}
   rescue
     MatchError -> {:error, "term_not_expected"}
+  end
+
+  defp maybe_squash(result, relay_recv_timestamp_from_client) do
+    case result do
+      {:ok, map} ->
+        map =
+          map
+          |> Map.take([
+            :engine_name,
+            :client_send_timestamp_to_relay
+          ])
+          |> Map.merge(%{
+            relay_recv_timestamp_from_client: relay_recv_timestamp_from_client,
+            relay_send_timestamp_to_client: System.system_time(:millisecond)
+          })
+
+        {:ok, map}
+
+      result ->
+        result
+    end
   end
 end

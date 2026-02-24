@@ -164,4 +164,29 @@ defmodule GiocciIntegrationTestTest do
              "Expected 'may not be running' message but got: #{inspect(result)}"
     end
   end
+
+  describe "measure_to feature" do
+    setup do
+      setup_relay_and_client()
+      setup_engine()
+      :ok
+    end
+
+    test "receives measurements each operation via measure_to" do
+      assert :ok == Giocci.register_client(@relay_name, measure_to: self())
+      assert_receive {:giocci_measurements, %{}}
+
+      assert :ok == Giocci.save_module(@relay_name, GiocciIntegrationTest, measure_to: self())
+      assert_receive {:giocci_measurements, %{}}
+
+      assert 3 ==
+               Giocci.exec_func(
+                 @relay_name,
+                 {GiocciIntegrationTest, :add, [1, 2]},
+                 measure_to: self()
+               )
+
+      assert_receive {:giocci_measurements, %{}}
+    end
+  end
 end

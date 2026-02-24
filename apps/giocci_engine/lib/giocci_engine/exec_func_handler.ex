@@ -41,6 +41,8 @@ defmodule GiocciEngine.ExecFuncHandler do
         %Zenohex.Query{key_expr: exec_func_key, payload: binary, zenoh_query: zenoh_query},
         %{exec_func_key: exec_func_key} = state
       ) do
+    engine_recv_timestamp_from_client = System.system_time(:millisecond)
+
     fun = fn ->
       result =
         with {:ok, recv_term} <- Utils.decode(binary),
@@ -48,15 +50,15 @@ defmodule GiocciEngine.ExecFuncHandler do
              :ok <- Utils.validate_module_saved(m),
              {:ok, result} <- Utils.exec_func(mfargs) do
           Logger.debug("Exec func successfully, #{inspect(mfargs)}.")
-          result
+          {:ok, Map.put(recv_term, :result, result)}
         else
           error ->
             Logger.error("Exec func failed, #{inspect(error)}.")
             error
         end
 
-      {:ok, binary} = Utils.encode(result)
-      :ok = Zenohex.Query.reply(zenoh_query, exec_func_key, binary)
+      result = maybe_squash(result, engine_recv_timestamp_from_client)
+      :ok = Utils.zenohex_reply(zenoh_query, exec_func_key, result)
     end
 
     {:ok, _pid} =
@@ -77,5 +79,31 @@ defmodule GiocciEngine.ExecFuncHandler do
     {:ok, {mfargs, client_name}}
   rescue
     MatchError -> {:error, "term_not_expected"}
+  end
+
+  defp maybe_squash(result, engine_recv_timestamp_from_client) do
+    case result do
+      {:ok, map} ->
+        map =
+          map
+          |> Map.take([
+            :engine_name,
+            :result,
+            :client_send_timestamp_to_relay,
+            :relay_recv_timestamp_from_client,
+            :relay_send_timestamp_to_client,
+            :client_recv_timestamp_from_relay,
+            :client_send_timestamp_to_engine
+          ])
+          |> Map.merge(%{
+            engine_recv_timestamp_from_client: engine_recv_timestamp_from_client,
+            engine_send_timestamp_to_client: System.system_time(:millisecond)
+          })
+
+        {:ok, map}
+
+      result ->
+        result
+    end
   end
 end

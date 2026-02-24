@@ -135,8 +135,9 @@ defmodule Giocci.Worker do
       with :ok <- validate_relay_registered(relay_name, registered_relays),
            key <- Path.join(key_prefix, "giocci/inquiry_engine/client/#{relay_name}"),
            {:ok, recv_term} <- Utils.zenohex_get(session_id, key, timeout, send_term),
-           {:ok, %{engine_name: engine_name}} <- recv_term,
+           {:ok, %{engine_name: engine_name} = measurements} <- recv_term,
            key <- Path.join(key_prefix, "giocci/exec_func/client/#{engine_name}"),
+           send_term <- Map.merge(send_term, measurements),
            {:ok, recv_term} <- Utils.zenohex_get(session_id, key, timeout, send_term) do
         recv_term
       end
@@ -220,8 +221,13 @@ defmodule Giocci.Worker do
   defp maybe_send_measurements(result, measure_to) do
     case result do
       {:ok, measurements} ->
-        if is_pid(measure_to), do: send(measure_to, {:giocci_measurement, measurements})
-        :ok
+        if is_pid(measure_to), do: send(measure_to, {:giocci_measurements, measurements})
+
+        if Map.has_key?(measurements, :result) do
+          measurements.result
+        else
+          :ok
+        end
 
       result ->
         result

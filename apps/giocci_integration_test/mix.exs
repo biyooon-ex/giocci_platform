@@ -49,7 +49,7 @@ defmodule GiocciIntegrationTest.MixProject do
         # Start zenohd in background
         spawn(fn -> Mix.shell().cmd("zenohd") end)
 
-        Mix.Task.run("test", args)
+        Mix.Task.run("test", ["--no-start" | args])
 
       # Check if docker command exists
       not is_nil(System.find_executable("docker")) ->
@@ -61,7 +61,7 @@ defmodule GiocciIntegrationTest.MixProject do
           Mix.shell().cmd({
             "docker",
             ~w"compose run --rm --workdir /app/apps/giocci_integration_test zenohd" ++
-              ~w"mix test --no-start" ++ args
+              ~w"mix test" ++ args
           })
 
         System.halt(exit_code)

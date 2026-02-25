@@ -1,10 +1,11 @@
 FROM hexpm/elixir:1.19.5-erlang-28.3-ubuntu-noble-20251013
 
-ARG ZENOH_VERSION=1.7.2
-ARG ZENOH_ARCHIVE=zenoh-${ZENOH_VERSION}-x86_64-unknown-linux-gnu-standalone.zip
-ARG ZENOH_URL=https://github.com/eclipse-zenoh/zenoh/releases/download/${ZENOH_VERSION}/${ZENOH_ARCHIVE}
+ARG TARGETARCH
 
-ENV GIOCCI_ZENOH_HOME=/opt/zenoh-${ZENOH_VERSION}-x86_64-unknown-linux-gnu-standalone
+ARG ZENOH_VERSION=1.7.2
+ARG ZENOH_URL=https://github.com/eclipse-zenoh/zenoh/releases/download/${ZENOH_VERSION}
+
+ENV GIOCCI_ZENOH_HOME=/opt/zenoh-${ZENOH_VERSION}
 ENV PATH="${GIOCCI_ZENOH_HOME}:${PATH}"
 
 # WHY: enable to build on arm64/macOS (added same line in apps/giocci*/Dockerfile)
@@ -18,7 +19,13 @@ EXPOSE 7446/udp
 RUN apt-get update \
   && apt-get install -y --no-install-recommends curl unzip ca-certificates \
   && mkdir -p "${GIOCCI_ZENOH_HOME}" \
-  && curl -fsSL "${ZENOH_URL}" -o "/tmp/${ZENOH_ARCHIVE}" \
+  && set -ex; \
+  if [ "$TARGETARCH" = "amd64" ]; then \
+  ZENOH_ARCHIVE="zenoh-${ZENOH_VERSION}-x86_64-unknown-linux-gnu-standalone.zip"; \
+  else \
+  ZENOH_ARCHIVE="zenoh-${ZENOH_VERSION}-aarch64-unknown-linux-gnu-standalone.zip"; \
+  fi; \
+  curl -fsSL "${ZENOH_URL}/${ZENOH_ARCHIVE}" -o "/tmp/${ZENOH_ARCHIVE}" \
   && unzip "/tmp/${ZENOH_ARCHIVE}" -d "${GIOCCI_ZENOH_HOME}" \
   && rm "/tmp/${ZENOH_ARCHIVE}" \
   && rm -rf /var/lib/apt/lists/*

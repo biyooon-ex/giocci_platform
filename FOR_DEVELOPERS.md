@@ -16,6 +16,12 @@ This command automatically detects your environment and runs tests appropriately
 - If Docker is available: runs tests in a containerized environment with Zenoh daemon
 - If running inside a container: executes tests directly with background Zenoh daemon
 
+When developing on arm64/macOS, running inside a container is the only option. Alternatively, run test as the command below.
+
+```bash
+docker compose run --rm zenohd /bin/sh -c "mix deps.get && mix test"
+```
+
 ### CI Docker Image
 
 The CI environment uses a Docker image built from the root `Dockerfile` and `docker-compose.yml` for the `zenohd` service.
@@ -61,6 +67,7 @@ This script:
 Publish the giocci package to Hex.pm:
 
 ```bash
+cd apps/giocci
 mix hex.publish
 ```
 
@@ -79,4 +86,4 @@ mix hex.publish
 6. For releases:
    - Update version numbers
    - Build and push Docker images: `./bin/build_and_push_app_images.sh`
-   - Publish to Hex: `mix hex.publish`
+   - Publish to Hex: `cd apps/giocci && mix hex.publish`

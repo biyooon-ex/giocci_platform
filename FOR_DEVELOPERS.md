@@ -29,8 +29,7 @@ The CI environment uses a Docker image built from the root `Dockerfile` and `doc
 To build and push the CI image:
 
 ```bash
-docker compose build zenohd
-docker compose push zenohd
+./bin/build_and_push_app_images.sh zenohd
 ```
 
 **Note**: This image is used by GitHub Actions for running tests in CI.
@@ -54,7 +53,7 @@ This script verifies that version numbers in `mix.exs`, `VERSIONS`, and other co
 Build and push all application Docker images (giocci, giocci_relay, giocci_engine):
 
 ```bash
-./bin/build_and_push_app_images.sh
+./bin/build_and_push_app_images.sh giocci giocci_relay giocci_engine
 ```
 
 This script:

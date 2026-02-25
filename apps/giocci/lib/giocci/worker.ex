@@ -67,14 +67,17 @@ defmodule Giocci.Worker do
     timeout = Keyword.fetch!(opts, :timeout)
     measure_to = Keyword.get(opts, :measure_to)
 
-    send_term = %{client_name: client_name}
+    term_to_relay = %{
+      data: %{client_name: client_name},
+      measurements: %{}
+    }
 
     {result, state} =
       with key <- Path.join(key_prefix, "giocci/register/client/#{relay_name}"),
-           {:ok, recv_term} <- Utils.zenohex_get(session_id, key, timeout, send_term) do
+           {:ok, term_from_relay} <- Utils.zenohex_get(session_id, key, timeout, term_to_relay) do
         registered_relays = [relay_name | registered_relays] |> Enum.uniq()
         state = %{state | registered_relays: registered_relays}
-        {recv_term, state}
+        {term_from_relay, state}
       else
         error -> {error, state}
       end
@@ -94,20 +97,23 @@ defmodule Giocci.Worker do
     timeout = Keyword.fetch!(opts, :timeout)
     measure_to = Keyword.get(opts, :measure_to)
 
-    send_term =
+    term_to_relay =
       %{
-        module_object_code: :code.get_object_code(module),
-        timeout: timeout,
-        client_name: client_name
+        data: %{
+          module_object_code: :code.get_object_code(module),
+          timeout: timeout,
+          client_name: client_name
+        },
+        measurements: %{}
       }
 
     result =
       with :ok <- validate_relay_registered(relay_name, registered_relays),
            :ok <- validate_module_found(module),
            key <- Path.join(key_prefix, "giocci/save_module/client/#{relay_name}"),
-           {:ok, recv_term} <- Utils.zenohex_get(session_id, key, timeout, send_term) do
-        # NOTE: recv_term is a list of {:ok, _} or {:error, _} tuples.
-        recv_term
+           {:ok, term_from_relay} <- Utils.zenohex_get(session_id, key, timeout, term_to_relay) do
+        # NOTE: term_from_relay is a list of {:ok, _} or {:error, _} tuples.
+        term_from_relay
       end
 
     result = maybe_send_measurements(result, measure_to)
@@ -125,21 +131,24 @@ defmodule Giocci.Worker do
     timeout = Keyword.fetch!(opts, :timeout)
     measure_to = Keyword.get(opts, :measure_to)
 
-    send_term =
+    term_to_relay =
       %{
-        mfargs: mfargs,
-        client_name: client_name
+        data: %{
+          mfargs: mfargs,
+          client_name: client_name
+        },
+        measurements: %{}
       }
 
     result =
       with :ok <- validate_relay_registered(relay_name, registered_relays),
            key <- Path.join(key_prefix, "giocci/inquiry_engine/client/#{relay_name}"),
-           {:ok, recv_term} <- Utils.zenohex_get(session_id, key, timeout, send_term),
-           {:ok, %{engine_name: engine_name} = measurements} <- recv_term,
-           key <- Path.join(key_prefix, "giocci/exec_func/client/#{engine_name}"),
-           send_term <- Map.merge(send_term, measurements),
-           {:ok, recv_term} <- Utils.zenohex_get(session_id, key, timeout, send_term) do
-        recv_term
+           {:ok, term_from_relay} <- Utils.zenohex_get(session_id, key, timeout, term_to_relay),
+           {:ok, %{data: data, measurements: measurements}} <- term_from_relay,
+           key <- Path.join(key_prefix, "giocci/exec_func/client/#{data.engine_name}"),
+           term_to_engine <- %{term_to_relay | measurements: measurements},
+           {:ok, term_from_engine} <- Utils.zenohex_get(session_id, key, timeout, term_to_engine) do
+        term_from_engine
       end
 
     result = maybe_send_measurements(result, measure_to)
@@ -158,22 +167,26 @@ defmodule Giocci.Worker do
 
     exec_id = make_ref()
 
-    send_term =
+    term_to_relay =
       %{
-        mfargs: mfargs,
-        exec_id: exec_id,
-        client_name: client_name
+        data: %{
+          mfargs: mfargs,
+          exec_id: exec_id,
+          client_name: client_name
+        },
+        measurements: %{}
       }
 
     result =
       with :ok <- validate_relay_registered(relay_name, registered_relays),
            key <- Path.join(key_prefix, "giocci/inquiry_engine/client/#{relay_name}"),
-           {:ok, recv_term} <- Utils.zenohex_get(session_id, key, timeout, send_term),
-           {:ok, %{engine_name: engine_name}} <- recv_term,
+           {:ok, term_from_relay} <- Utils.zenohex_get(session_id, key, timeout, term_to_relay),
+           {:ok, %{data: data, measurements: measurements}} <- term_from_relay,
            key <- Path.join(key_prefix, "giocci/exec_func_async/engine/#{client_name}"),
            {:ok, subscriber_id} <- Zenohex.Session.declare_subscriber(session_id, key),
-           key <- Path.join(key_prefix, "giocci/exec_func_async/client/#{engine_name}"),
-           :ok <- Utils.zenohex_put(session_id, key, send_term) do
+           key <- Path.join(key_prefix, "giocci/exec_func_async/client/#{data.engine_name}"),
+           term_to_engine <- %{term_to_relay | measurements: measurements},
+           :ok <- Utils.zenohex_put(session_id, key, term_to_engine) do
         ExecFuncAsyncStore.put(exec_id, %{
           server: server,
           subscriber_id: subscriber_id,
@@ -186,8 +199,8 @@ defmodule Giocci.Worker do
   end
 
   def handle_info(%Zenohex.Sample{payload: binary}, state) do
-    with {:ok, recv_term} <- Utils.decode(binary),
-         {:ok, %{exec_id: exec_id, result: result}} <- recv_term,
+    with {:ok, term_from_engine} <- Utils.decode(binary),
+         {:ok, %{data: %{exec_id: exec_id, result: result}}} <- term_from_engine,
          %{server: server, subscriber_id: subscriber_id} <- ExecFuncAsyncStore.get(exec_id) do
       send(server, {:giocci, result})
       :ok = ExecFuncAsyncStore.delete(exec_id)
@@ -220,14 +233,12 @@ defmodule Giocci.Worker do
 
   defp maybe_send_measurements(result, measure_to) do
     case result do
-      {:ok, measurements} ->
-        if is_pid(measure_to), do: send(measure_to, {:giocci_measurements, measurements})
-
-        if Map.has_key?(measurements, :result) do
-          measurements.result
-        else
-          :ok
+      {:ok, recv_term} ->
+        if is_pid(measure_to) do
+          send(measure_to, {:giocci_measurements, recv_term.measurements})
         end
+
+        recv_term.data
 
       result ->
         result

@@ -45,20 +45,22 @@ defmodule GiocciRelay.ModuleSaver do
 
     result =
       with {:ok, term_from_client} <- Utils.decode(binary),
-           {:ok, {module_object_code, timeout, client_name}} <- extract(term_from_client),
+           {:ok, {module_object_code, timeout, client_name}} <- extract(term_from_client.data),
            :ok <- GiocciRelay.ClientRegistrar.validate_registered(client_name),
            :ok <- GiocciRelay.ModuleStore.put(client_name, module_object_code) do
         term_to_engine = %{
-          client_send_timestamp_to_relay: term_from_client.client_send_timestamp_to_relay,
-          relay_name: relay_name,
-          client_modules_map: %{client_name => [module_object_code]}
+          data: %{
+            relay_name: relay_name,
+            client_modules_map: %{client_name => [module_object_code]}
+          },
+          measurements: term_from_client.measurements
         }
 
         term_from_engine_list =
           for engine_name <- GiocciRelay.EngineRegistrar.registered_engines() do
             with key <- Path.join(key_prefix, "giocci/save_module/relay/#{engine_name}"),
                  {:ok, term_from_engine} <-
-                   Utils.zenohex_get2(session_id, key, timeout, term_to_engine) do
+                   Utils.zenohex_get(session_id, key, timeout, term_to_engine) do
               term_from_engine
             end
           end
@@ -72,7 +74,7 @@ defmodule GiocciRelay.ModuleSaver do
           error
       end
 
-    result = maybe_squash(result, relay_recv_timestamp_from_client)
+    result = maybe_add_measurements(result, relay_recv_timestamp_from_client)
     :ok = Utils.zenohex_reply(zenoh_query, save_module_key, result)
 
     {:noreply, state}
@@ -90,31 +92,25 @@ defmodule GiocciRelay.ModuleSaver do
     MatchError -> {:error, "term_not_expected"}
   end
 
-  defp maybe_squash(result, relay_recv_timestamp_from_client) do
+  defp maybe_add_measurements(result, relay_recv_timestamp_from_client) do
     case result do
       {:ok, term_from_engine_list} ->
-        measurements_list =
+        term_from_engine_list =
           Enum.map(term_from_engine_list, fn
-            {:ok, map} ->
-              map =
-                Map.take(map, [
-                  :engine_name,
-                  :client_send_timestamp_to_relay,
-                  :engine_recv_timestamp_from_relay,
-                  :engine_send_timestamp_to_relay
-                ])
-                |> Map.merge(%{
+            {:ok, %{data: data, measurements: measurements}} ->
+              measurements =
+                Map.merge(measurements, %{
                   relay_recv_timestamp_from_client: relay_recv_timestamp_from_client,
                   relay_send_timestamp_to_client: System.system_time(:millisecond)
                 })
 
-              {:ok, map}
+              {:ok, %{data: data, measurements: measurements}}
 
             error ->
               error
           end)
 
-        {:ok, measurements_list}
+        {:ok, term_from_engine_list}
 
       result ->
         result

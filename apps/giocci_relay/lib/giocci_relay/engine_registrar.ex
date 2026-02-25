@@ -51,16 +51,19 @@ defmodule GiocciRelay.EngineRegistrar do
     registered_engines = state.registered_engines
 
     session_id = GiocciRelay.SessionManager.session_id()
+    timeout = 5000
 
     {result, state} =
-      with {:ok, %{engine_name: engine_name}} <- Utils.decode(binary),
+      with {:ok, term_from_engine} <- Utils.decode(binary),
+           %{engine_name: engine_name} <- term_from_engine.data,
            key <- Path.join(key_prefix, "giocci/save_module/relay/#{engine_name}"),
            {:ok, client_modules_map} <- GiocciRelay.ModuleStore.get(),
-           {:ok, binary} <-
-             Utils.encode(%{relay_name: relay_name, client_modules_map: client_modules_map}),
-           {:ok, binary} <- Utils.zenohex_get(session_id, key, _timeout = 5000, binary),
-           {:ok, recv_term} <- Utils.decode(binary),
-           {:ok, _measurements} <- recv_term do
+           term_to_engine <- %{
+             data: %{relay_name: relay_name, client_modules_map: client_modules_map},
+             measurements: term_from_engine.measurements
+           },
+           {:ok, term_from_engine} <- Utils.zenohex_get(session_id, key, timeout, term_to_engine),
+           {:ok, _} <- term_from_engine do
         Logger.debug("#{inspect(engine_name)} registration completed successfully.")
         registered_engines = [engine_name | registered_engines] |> Enum.uniq()
         state = %{state | registered_engines: registered_engines}

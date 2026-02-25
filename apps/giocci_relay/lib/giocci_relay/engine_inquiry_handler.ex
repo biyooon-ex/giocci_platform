@@ -42,22 +42,27 @@ defmodule GiocciRelay.EngineInquiryHandler do
     relay_recv_timestamp_from_client = System.system_time(:millisecond)
 
     result =
-      with {:ok, recv_term} <- Utils.decode(binary),
-           {:ok, {mfargs, client_name}} <- extract(recv_term),
+      with {:ok, term_from_client} <- Utils.decode(binary),
+           {:ok, {mfargs, client_name}} <- extract(term_from_client.data),
            :ok <- GiocciRelay.ClientRegistrar.validate_registered(client_name),
            {:ok, engine_name} <- GiocciRelay.EngineRegistrar.select_engine() do
         Logger.debug(
           "#{inspect(engine_name)} is selected for #{inspect(client_name)}'s #{inspect(mfargs)}."
         )
 
-        {:ok, Map.put(recv_term, :engine_name, engine_name)}
+        term_to_client = %{
+          data: %{engine_name: engine_name},
+          measurements: term_from_client.measurements
+        }
+
+        {:ok, term_to_client}
       else
         error ->
           Logger.error("Inquiry engine failed, #{inspect(error)}.")
           error
       end
 
-    result = maybe_squash(result, relay_recv_timestamp_from_client)
+    result = maybe_add_measurements(result, relay_recv_timestamp_from_client)
     :ok = Utils.zenohex_reply(zenoh_query, inquiry_engine_key, result)
 
     {:noreply, state}
@@ -74,21 +79,16 @@ defmodule GiocciRelay.EngineInquiryHandler do
     MatchError -> {:error, "term_not_expected"}
   end
 
-  defp maybe_squash(result, relay_recv_timestamp_from_client) do
+  defp maybe_add_measurements(result, relay_recv_timestamp_from_client) do
     case result do
-      {:ok, map} ->
-        map =
-          map
-          |> Map.take([
-            :engine_name,
-            :client_send_timestamp_to_relay
-          ])
-          |> Map.merge(%{
+      {:ok, %{data: data, measurements: measurements}} ->
+        measurements =
+          Map.merge(measurements, %{
             relay_recv_timestamp_from_client: relay_recv_timestamp_from_client,
             relay_send_timestamp_to_client: System.system_time(:millisecond)
           })
 
-        {:ok, map}
+        {:ok, %{data: data, measurements: measurements}}
 
       result ->
         result

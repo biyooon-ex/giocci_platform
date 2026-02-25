@@ -1,30 +1,13 @@
 defmodule GiocciRelay.Utils do
   @moduledoc false
 
-  def zenohex_get2(session_id, key, timeout, send_term) do
+  def zenohex_get(session_id, key, timeout, send_term) do
     {:ok, payload} = encode(add_send_measurements(key, send_term))
 
     case Zenohex.Session.get(session_id, key, timeout, payload: payload) do
       {:ok, [%Zenohex.Sample{payload: payload}]} ->
         {:ok, recv_term} = decode(payload)
         {:ok, add_recv_measurements(key, recv_term)}
-
-      {:error, :timeout} ->
-        operation = extract_operation_description(key)
-        {:error, "timeout: #{operation} timed out after #{timeout}ms"}
-
-      {:error, reason} ->
-        target_info = extract_target_info(key)
-
-        {:error,
-         "connection_failed: #{target_info}. Please ensure the target component is running. (Details: #{inspect(reason)})"}
-    end
-  end
-
-  def zenohex_get(session_id, key, timeout, payload) do
-    case Zenohex.Session.get(session_id, key, timeout, payload: payload) do
-      {:ok, [%Zenohex.Sample{payload: payload}]} ->
-        {:ok, payload}
 
       {:error, :timeout} ->
         operation = extract_operation_description(key)
@@ -83,29 +66,28 @@ defmodule GiocciRelay.Utils do
     ArgumentError -> {:error, "decode_failed"}
   end
 
-  defp add_send_measurements(key, send_term) do
-    cond do
-      String.contains?(key, "/save_module/relay/") ->
-        Map.put(send_term, :relay_send_timestamp_to_engine, System.system_time(:millisecond))
+  defp add_send_measurements(key, %{measurements: measurements} = send_term) do
+    key =
+      cond do
+        String.contains?(key, "/save_module/relay/") -> :relay_send_timestamp_to_engine
+        true -> raise "Unexpected condition reached"
+      end
 
-      true ->
-        send_term
-    end
+    measurements = Map.put(measurements, key, System.system_time(:millisecond))
+    %{send_term | measurements: measurements}
   end
 
   defp add_recv_measurements(key, recv_term) do
     case recv_term do
-      {:ok, map} ->
-        map =
+      {:ok, %{data: data, measurements: measurements}} ->
+        key =
           cond do
-            String.contains?(key, "/save_module/relay/") ->
-              Map.put(map, :relay_recv_timestamp_from_engine, System.system_time(:millisecond))
-
-            true ->
-              map
+            String.contains?(key, "/save_module/relay/") -> :relay_recv_timestamp_from_engine
+            true -> raise "Unexpected condition reached"
           end
 
-        {:ok, map}
+        measurements = Map.put(measurements, key, System.system_time(:millisecond))
+        {:ok, %{data: data, measurements: measurements}}
 
       recv_term ->
         recv_term

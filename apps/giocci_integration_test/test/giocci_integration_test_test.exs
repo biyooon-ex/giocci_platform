@@ -174,10 +174,28 @@ defmodule GiocciIntegrationTestTest do
 
     test "receives measurements each operation via measure_to" do
       assert :ok == Giocci.register_client(@relay_name, measure_to: self())
-      assert_receive {:giocci_measurements, %{}}
+
+      assert_receive {:giocci_measurements,
+                      %{
+                        client_send_timestamp_to_relay: _,
+                        relay_recv_timestamp_from_client: _,
+                        relay_send_timestamp_to_client: _,
+                        client_recv_timestamp_from_relay: _
+                      }}
 
       assert :ok == Giocci.save_module(@relay_name, GiocciIntegrationTest, measure_to: self())
-      assert_receive {:giocci_measurements, %{}}
+
+      assert_receive {:giocci_measurements,
+                      %{
+                        client_send_timestamp_to_relay: _,
+                        relay_recv_timestamp_from_client: _,
+                        relay_send_timestamp_to_engine: _,
+                        engine_recv_timestamp_from_relay: _,
+                        engine_send_timestamp_to_relay: _,
+                        relay_recv_timestamp_from_engine: _,
+                        relay_send_timestamp_to_client: _,
+                        client_recv_timestamp_from_relay: _
+                      }}
 
       assert 3 ==
                Giocci.exec_func(
@@ -186,7 +204,17 @@ defmodule GiocciIntegrationTestTest do
                  measure_to: self()
                )
 
-      assert_receive {:giocci_measurements, %{}}
+      assert_receive {:giocci_measurements,
+                      %{
+                        client_send_timestamp_to_relay: _,
+                        relay_recv_timestamp_from_client: _,
+                        relay_send_timestamp_to_client: _,
+                        client_recv_timestamp_from_relay: _,
+                        client_send_timestamp_to_engine: _,
+                        engine_recv_timestamp_from_client: _,
+                        engine_send_timestamp_to_client: _,
+                        client_recv_timestamp_from_engine: _
+                      }}
     end
   end
 end

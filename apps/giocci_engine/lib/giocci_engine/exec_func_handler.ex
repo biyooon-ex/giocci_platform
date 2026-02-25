@@ -45,19 +45,19 @@ defmodule GiocciEngine.ExecFuncHandler do
 
     fun = fn ->
       result =
-        with {:ok, recv_term} <- Utils.decode(binary),
-             {:ok, {{m, _f, _args} = mfargs, _client_name}} <- extract(recv_term),
+        with {:ok, term_from_client} <- Utils.decode(binary),
+             {:ok, {{m, _f, _args} = mfargs, _client_name}} <- extract(term_from_client.data),
              :ok <- Utils.validate_module_saved(m),
              {:ok, result} <- Utils.exec_func(mfargs) do
           Logger.debug("Exec func successfully, #{inspect(mfargs)}.")
-          {:ok, Map.put(recv_term, :result, result)}
+          {:ok, %{data: result, measurements: term_from_client.measurements}}
         else
           error ->
             Logger.error("Exec func failed, #{inspect(error)}.")
             error
         end
 
-      result = maybe_squash(result, engine_recv_timestamp_from_client)
+      result = maybe_add_measurements(result, engine_recv_timestamp_from_client)
       :ok = Utils.zenohex_reply(zenoh_query, exec_func_key, result)
     end
 
@@ -81,26 +81,16 @@ defmodule GiocciEngine.ExecFuncHandler do
     MatchError -> {:error, "term_not_expected"}
   end
 
-  defp maybe_squash(result, engine_recv_timestamp_from_client) do
+  defp maybe_add_measurements(result, engine_recv_timestamp_from_client) do
     case result do
-      {:ok, map} ->
-        map =
-          map
-          |> Map.take([
-            :engine_name,
-            :result,
-            :client_send_timestamp_to_relay,
-            :relay_recv_timestamp_from_client,
-            :relay_send_timestamp_to_client,
-            :client_recv_timestamp_from_relay,
-            :client_send_timestamp_to_engine
-          ])
-          |> Map.merge(%{
+      {:ok, %{data: data, measurements: measurements}} ->
+        measurements =
+          Map.merge(measurements, %{
             engine_recv_timestamp_from_client: engine_recv_timestamp_from_client,
             engine_send_timestamp_to_client: System.system_time(:millisecond)
           })
 
-        {:ok, map}
+        {:ok, %{data: data, measurements: measurements}}
 
       result ->
         result

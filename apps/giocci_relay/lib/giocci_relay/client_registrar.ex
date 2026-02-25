@@ -46,12 +46,12 @@ defmodule GiocciRelay.ClientRegistrar do
     registered_clients = state.registered_clients
 
     {result, state} =
-      with {:ok, recv_term} <- Utils.decode(binary),
-           %{client_name: client_name} <- recv_term do
+      with {:ok, term_from_client} <- Utils.decode(binary),
+           %{client_name: client_name} <- term_from_client.data do
         Logger.debug("#{inspect(client_name)} registration completed successfully.")
-        registered_clients = [recv_term.client_name | registered_clients] |> Enum.uniq()
+        registered_clients = [client_name | registered_clients] |> Enum.uniq()
 
-        {{:ok, recv_term}, %{state | registered_clients: registered_clients}}
+        {{:ok, term_from_client}, %{state | registered_clients: registered_clients}}
       else
         error ->
           Logger.error("Client registration failed by #{inspect(error)}.")
@@ -77,16 +77,17 @@ defmodule GiocciRelay.ClientRegistrar do
 
   defp maybe_squash(result, relay_recv_timestamp_from_client) do
     case result do
-      {:ok, %{client_send_timestamp_to_relay: client_send_timestamp_to_relay}} ->
-        {:ok,
-         %{
-           client_send_timestamp_to_relay: client_send_timestamp_to_relay,
-           relay_recv_timestamp_from_client: relay_recv_timestamp_from_client,
-           relay_send_timestamp_to_client: System.system_time(:millisecond)
-         }}
+      {:ok, %{measurements: measurements}} ->
+        term_to_client = %{
+          data: :ok,
+          measurements:
+            Map.merge(measurements, %{
+              relay_recv_timestamp_from_client: relay_recv_timestamp_from_client,
+              relay_send_timestamp_to_client: System.system_time(:millisecond)
+            })
+        }
 
-      {:ok, _recv_term} ->
-        :ok
+        {:ok, term_to_client}
 
       result ->
         result

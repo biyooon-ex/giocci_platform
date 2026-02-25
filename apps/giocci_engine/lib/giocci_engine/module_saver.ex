@@ -45,19 +45,19 @@ defmodule GiocciEngine.ModuleSaver do
     relay_name = state.relay_name
 
     result =
-      with {:ok, recv_term} <- Utils.decode(binary),
-           {:ok, {received_relay_name, client_modules_map}} <- extract(recv_term),
+      with {:ok, term_from_relay} <- Utils.decode(binary),
+           {:ok, {received_relay_name, client_modules_map}} <- extract(term_from_relay.data),
            :ok <- verify_relay_name(relay_name, received_relay_name),
            :ok <- save_module(client_modules_map) do
         Logger.debug("Module saved successfully.")
-        {:ok, recv_term}
+        {:ok, term_from_relay}
       else
         error ->
           Logger.error("Module save failed, #{inspect(error)}.")
           error
       end
 
-    result = maybe_squash(result, engine_recv_timestamp_from_relay)
+    result = maybe_add_measurements(result, engine_recv_timestamp_from_relay)
     :ok = Utils.zenohex_reply(zenoh_query, save_module_key, result)
 
     {:noreply, state}
@@ -110,21 +110,16 @@ defmodule GiocciEngine.ModuleSaver do
     |> save_module()
   end
 
-  defp maybe_squash(result, engine_recv_timestamp_from_relay) do
+  defp maybe_add_measurements(result, engine_recv_timestamp_from_relay) do
     case result do
-      {:ok, map} ->
+      {:ok, %{data: data, measurements: measurements}} ->
         measurements =
-          map
-          |> Map.take([
-            :client_send_timestamp_to_relay,
-            :relay_send_timestamp_to_engine
-          ])
-          |> Map.merge(%{
+          Map.merge(measurements, %{
             engine_recv_timestamp_from_relay: engine_recv_timestamp_from_relay,
             engine_send_timestamp_to_relay: System.system_time(:millisecond)
           })
 
-        {:ok, measurements}
+        {:ok, %{data: data, measurements: measurements}}
 
       result ->
         result

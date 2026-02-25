@@ -1,8 +1,12 @@
-FROM hexpm/elixir:1.19.5-erlang-28.3-ubuntu-noble-20251013
+ARG ELIXIR_VERSION
+ARG ERLANG_VERSION
+ARG UBUNTU_VERSION
+
+FROM hexpm/elixir:${ELIXIR_VERSION}-erlang-${ERLANG_VERSION}-ubuntu-${UBUNTU_VERSION}
 
 ARG TARGETARCH
 
-ARG ZENOH_VERSION=1.7.2
+ARG ZENOH_VERSION
 ARG ZENOH_URL=https://github.com/eclipse-zenoh/zenoh/releases/download/${ZENOH_VERSION}
 
 ENV GIOCCI_ZENOH_HOME=/opt/zenoh-${ZENOH_VERSION}

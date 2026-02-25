@@ -16,16 +16,16 @@ ENV ERL_AFLAGS="+JMsingle true"
 EXPOSE 7447/tcp
 EXPOSE 7446/udp
 
-RUN apt-get update \
+RUN case "${TARGETARCH}" in \
+      amd64) ZENOH_ARCH="x86_64-unknown-linux-gnu" ;; \
+      arm64) ZENOH_ARCH="aarch64-unknown-linux-gnu" ;; \
+      *) echo "Unsupported architecture: ${TARGETARCH}" && exit 1 ;; \
+    esac \
+  && ZENOH_ARCHIVE="zenoh-${ZENOH_VERSION}-${ZENOH_ARCH}-standalone.zip" \
+  && apt-get update \
   && apt-get install -y --no-install-recommends curl unzip ca-certificates \
   && mkdir -p "${GIOCCI_ZENOH_HOME}" \
-  && set -ex; \
-  if [ "$TARGETARCH" = "amd64" ]; then \
-  ZENOH_ARCHIVE="zenoh-${ZENOH_VERSION}-x86_64-unknown-linux-gnu-standalone.zip"; \
-  else \
-  ZENOH_ARCHIVE="zenoh-${ZENOH_VERSION}-aarch64-unknown-linux-gnu-standalone.zip"; \
-  fi; \
-  curl -fsSL "${ZENOH_URL}/${ZENOH_ARCHIVE}" -o "/tmp/${ZENOH_ARCHIVE}" \
+  && curl -fsSL "${ZENOH_URL}/${ZENOH_ARCHIVE}" -o "/tmp/${ZENOH_ARCHIVE}" \
   && unzip "/tmp/${ZENOH_ARCHIVE}" -d "${GIOCCI_ZENOH_HOME}" \
   && rm "/tmp/${ZENOH_ARCHIVE}" \
   && rm -rf /var/lib/apt/lists/*

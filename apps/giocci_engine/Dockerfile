@@ -10,6 +10,8 @@ WORKDIR /app
 ENV MIX_ENV=prod
 ENV LANG=C.UTF-8
 
+ENV ERL_AFLAGS="+JMsingle true"
+
 RUN mix local.hex --force && mix local.rebar --force
 
 # Copy dependency files first for better caching

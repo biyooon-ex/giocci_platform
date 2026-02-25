@@ -52,14 +52,7 @@ defmodule GiocciRelay.ModuleSaver do
           client_modules_map: %{client_name => [module_object_code]}
         }
 
-        for engine_name <- GiocciRelay.EngineRegistrar.registered_engines() do
-          with key <- Path.join(key_prefix, "giocci/save_module/relay/#{engine_name}"),
-               {:ok, binary} <- Utils.encode(send_term),
-               {:ok, binary} <- Utils.zenohex_get(session_id, key, timeout, binary),
-               {:ok, recv_term} <- Utils.decode(binary) do
-            :ok = recv_term
-          end
-        end
+        save_to_engines(send_term, key_prefix, session_id, timeout)
 
         {module, _binary, _filename} = module_object_code
         Logger.debug("#{inspect(module)} saved successfully, from #{inspect(client_name)}.")
@@ -74,6 +67,17 @@ defmodule GiocciRelay.ModuleSaver do
     :ok = Zenohex.Query.reply(zenoh_query, save_module_key, binary)
 
     {:noreply, state}
+  end
+
+  defp save_to_engines(send_term, key_prefix, session_id, timeout) do
+    for engine_name <- GiocciRelay.EngineRegistrar.registered_engines() do
+      with key <- Path.join(key_prefix, "giocci/save_module/relay/#{engine_name}"),
+           {:ok, binary} <- Utils.encode(send_term),
+           {:ok, binary} <- Utils.zenohex_get(session_id, key, timeout, binary),
+           {:ok, recv_term} <- Utils.decode(binary) do
+        :ok = recv_term
+      end
+    end
   end
 
   defp extract(term) do

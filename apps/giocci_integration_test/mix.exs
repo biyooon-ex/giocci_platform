@@ -49,8 +49,9 @@ defmodule GiocciIntegrationTest.MixProject do
         with host_arch <- System.get_env("HOST_ARCH"),
              true <- not is_nil(host_arch),
              true <- String.starts_with?(host_arch, "aarch64-apple-darwin") do
-          Mix.shell().info("Detected Apple Silicon host - fetching dependencies for arm64 linux")
-          Mix.Task.run("deps.get")
+          Mix.shell().info("Detected Apple Silicon host - refetching zenohex for arm64 linux")
+          Mix.Task.run("deps.clean", ["zenohex"])
+          Mix.Task.run("deps.get", ["zenohex"])
         end
 
         # Start zenohd in background

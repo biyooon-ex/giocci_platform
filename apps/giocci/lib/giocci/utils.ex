@@ -30,48 +30,26 @@ defmodule Giocci.Utils do
   end
 
   defp extract_operation_description(key) do
+    name = extract_target_name(key)
+
     cond do
-      String.contains?(key, "/register/client/") ->
-        relay_name = extract_target_name(key)
-        "Registering client to relay '#{relay_name}'"
-
-      String.contains?(key, "/save_module/client/") ->
-        relay_name = extract_target_name(key)
-        "Saving module via relay '#{relay_name}'"
-
-      String.contains?(key, "/inquiry_engine/client/") ->
-        relay_name = extract_target_name(key)
-        "Inquiring engine from relay '#{relay_name}'"
-
-      String.contains?(key, "/exec_func/client/") ->
-        engine_name = extract_target_name(key)
-        "Executing function on engine '#{engine_name}'"
-
-      true ->
-        "Operation on '#{key}'"
+      String.contains?(key, "/register/client/") -> "Registering client to relay '#{name}'"
+      String.contains?(key, "/save_module/client/") -> "Saving module via relay '#{name}'"
+      String.contains?(key, "/inquiry_engine/client/") -> "Inquiring engine from relay '#{name}'"
+      String.contains?(key, "/exec_func/client/") -> "Executing function on engine '#{name}'"
+      true -> "Operation on '#{key}'"
     end
   end
 
   defp extract_target_info(key) do
+    name = extract_target_name(key)
+
     cond do
-      String.contains?(key, "/register/client/") ->
-        relay_name = extract_target_name(key)
-        "Relay '#{relay_name}' may not be running"
-
-      String.contains?(key, "/save_module/client/") ->
-        relay_name = extract_target_name(key)
-        "Relay '#{relay_name}' may not be running"
-
-      String.contains?(key, "/inquiry_engine/client/") ->
-        relay_name = extract_target_name(key)
-        "Relay '#{relay_name}' may not be running"
-
-      String.contains?(key, "/exec_func/client/") ->
-        engine_name = extract_target_name(key)
-        "Engine '#{engine_name}' may not be running"
-
-      true ->
-        "Target component may not be running"
+      String.contains?(key, "/register/client/") -> "Relay '#{name}' may not be running"
+      String.contains?(key, "/save_module/client/") -> "Relay '#{name}' may not be running"
+      String.contains?(key, "/inquiry_engine/client/") -> "Relay '#{name}' may not be running"
+      String.contains?(key, "/exec_func/client/") -> "Engine '#{name}' may not be running"
+      true -> "Target component may not be running"
     end
   end
 
@@ -121,26 +99,21 @@ defmodule Giocci.Utils do
         {:ok, %{data: data, measurements: measurements}}
 
       {:ok, list} when is_list(list) ->
-        cond do
-          String.contains?(key, "/save_module/client/") ->
-            Enum.map(list, fn
-              {:ok, %{data: data, measurements: measurements}} ->
-                measurements =
-                  Map.put(
-                    measurements,
-                    :client_recv_timestamp_from_relay,
-                    System.system_time(:millisecond)
-                  )
-
-                {:ok, %{data: data, measurements: measurements}}
-
-              error ->
-                error
-            end)
-
-          true ->
+        key =
+          if String.contains?(key, "/save_module/client/") do
+            :client_recv_timestamp_from_relay
+          else
             raise "Unexpected condition reached"
-        end
+          end
+
+        Enum.map(list, fn
+          {:ok, %{data: data, measurements: measurements}} ->
+            measurements = Map.put(measurements, key, System.system_time(:millisecond))
+            {:ok, %{data: data, measurements: measurements}}
+
+          error ->
+            error
+        end)
 
       recv_term ->
         recv_term

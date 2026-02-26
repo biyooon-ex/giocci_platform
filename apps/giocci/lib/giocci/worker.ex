@@ -239,12 +239,12 @@ defmodule Giocci.Worker do
 
   defp maybe_send_measurements(result, measure_to) do
     case result do
-      {:ok, recv_term} ->
+      {:ok, %{data: data, measurements: measurements}} ->
         if is_pid(measure_to) do
-          send(measure_to, {:giocci_measurements, recv_term.measurements})
+          send(measure_to, {:giocci_measurements, measurements})
         end
 
-        recv_term.data
+        data
 
       result ->
         result

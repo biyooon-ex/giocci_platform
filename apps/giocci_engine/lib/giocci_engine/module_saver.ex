@@ -50,7 +50,13 @@ defmodule GiocciEngine.ModuleSaver do
            :ok <- verify_relay_name(relay_name, received_relay_name),
            :ok <- save_module(client_modules_map) do
         Logger.debug("Module saved successfully.")
-        {:ok, term_from_relay}
+
+        term_to_relay = %{
+          data: nil,
+          measurements: term_from_relay.measurements
+        }
+
+        {:ok, term_to_relay}
       else
         error ->
           Logger.error("Module save failed, #{inspect(error)}.")

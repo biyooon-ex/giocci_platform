@@ -215,6 +215,23 @@ defmodule GiocciIntegrationTestTest do
                         engine_send_timestamp_to_client: _,
                         client_recv_timestamp_from_engine: _
                       }}
+
+      :ok =
+        Giocci.exec_func_async(@relay_name, {GiocciIntegrationTest, :add, [1, 2]}, self(),
+          measure_to: self()
+        )
+
+      assert_receive {:giocci, 3},
+                     @async_message_timeout,
+                     "Expected async response with result 3"
+
+      assert_receive {:giocci_measurements,
+                      %{
+                        client_send_timestamp_to_relay: _,
+                        relay_recv_timestamp_from_client: _,
+                        relay_send_timestamp_to_client: _,
+                        client_recv_timestamp_from_relay: _
+                      }}
     end
   end
 end

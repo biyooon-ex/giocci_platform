@@ -170,6 +170,7 @@ defmodule Giocci.Worker do
     session_id = Giocci.SessionManager.session_id()
 
     timeout = Keyword.fetch!(opts, :timeout)
+    measure_to = Keyword.get(opts, :measure_to)
 
     exec_id = make_ref()
 
@@ -192,14 +193,18 @@ defmodule Giocci.Worker do
            {:ok, subscriber_id} <- Zenohex.Session.declare_subscriber(session_id, key),
            key <- Path.join(key_prefix, "giocci/exec_func_async/client/#{data.engine_name}"),
            term_to_engine <- %{term_to_relay | measurements: measurements},
-           :ok <- Utils.zenohex_put(session_id, key, term_to_engine) do
-        ExecFuncAsyncStore.put(exec_id, %{
-          server: server,
-          subscriber_id: subscriber_id,
-          timeout: timeout,
-          put_time: System.monotonic_time(:millisecond)
-        })
+           :ok <- Utils.zenohex_put(session_id, key, term_to_engine),
+           :ok <-
+             ExecFuncAsyncStore.put(exec_id, %{
+               server: server,
+               subscriber_id: subscriber_id,
+               timeout: timeout,
+               put_time: System.monotonic_time(:millisecond)
+             }) do
+        {:ok, %{data: nil, measurements: measurements}}
       end
+
+    result = maybe_send_measurements(result, measure_to)
 
     {:reply, result, state}
   end
@@ -244,7 +249,7 @@ defmodule Giocci.Worker do
           send(measure_to, {:giocci_measurements, measurements})
         end
 
-        data
+        if is_nil(data), do: :ok, else: data
 
       result ->
         result

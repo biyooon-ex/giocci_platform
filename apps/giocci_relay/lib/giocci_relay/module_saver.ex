@@ -61,6 +61,7 @@ defmodule GiocciRelay.ModuleSaver do
             with key <- Path.join(key_prefix, "giocci/save_module/relay/#{engine_name}"),
                  {:ok, term_from_engine} <-
                    Utils.zenohex_get(session_id, key, timeout, term_to_engine) do
+              # NOTE: term_from_engine is {:ok, %{data: data, measurements: measurements}} or {:error, _} tuples.
               term_from_engine
             end
           end

@@ -40,6 +40,7 @@ defmodule Giocci do
 
   Options:
     - `:timeout` - Client call timeout in milliseconds.
+    - `:measure_to` - When set to a pid, sends measurement timestamps as `{:giocci_measurements, timestamps}` to that process.
   """
   @spec exec_func_async(String.t(), tuple(), GenServer.server(), keyword()) ::
           :ok | {:error, reason :: term()}

@@ -51,7 +51,7 @@ defmodule GiocciEngine.ExecFuncAsyncHandler do
            key <- Path.join(key_prefix, "giocci/exec_func_async/engine/#{client_name}") do
         Logger.debug("Exec func async successfully, #{inspect(mfargs)}.")
 
-        result =
+        term_to_client =
           {:ok,
            %{
              data: %{
@@ -64,8 +64,7 @@ defmodule GiocciEngine.ExecFuncAsyncHandler do
            }}
 
         session_id = GiocciEngine.SessionManager.session_id()
-        {:ok, binary} = Utils.encode(result)
-        :ok = Zenohex.Session.put(session_id, key, binary)
+        :ok = Utils.zenohex_put(session_id, key, term_to_client)
       else
         error ->
           Logger.error("Exec func async failed, #{inspect(error)}.")

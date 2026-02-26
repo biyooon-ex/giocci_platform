@@ -78,5 +78,5 @@ mix hex.publish
 5. CI will automatically run tests
 6. For releases:
    - Update version numbers
-   - Build and push Docker images: `./bin/build_and_push_app_images.sh`
+   - Build and push Docker images: `./bin/build_and_push_app_images.sh all`
    - Publish to Hex: `cd apps/giocci && mix hex.publish`

@@ -5,7 +5,7 @@ ARG TARGETARCH
 ARG ZENOH_VERSION=1.7.2
 ARG ZENOH_URL=https://github.com/eclipse-zenoh/zenoh/releases/download/${ZENOH_VERSION}
 
-# Zenoh architecture mappings and  SHA256 checksums for Zenoh releases
+# Zenoh architecture mappings and SHA256 checksums for Zenoh releases
 ARG ZENOH_ARCH_amd64=x86_64-unknown-linux-gnu
 ARG ZENOH_SHA256_amd64=d59cb50835078bfe3e49e7a3b3041c3dbb48e243a1e853f6012565ac91f1305a
 ARG ZENOH_ARCH_arm64=aarch64-unknown-linux-gnu

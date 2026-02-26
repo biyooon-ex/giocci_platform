@@ -22,7 +22,13 @@ defmodule Giocci.Worker do
     timeout = Keyword.get(opts, :timeout, @default_timeout)
     opts = Keyword.put(opts, :timeout, timeout)
 
-    GenServer.call(@name, {:save_module, relay_name, module, opts}, :infinity)
+    module_object_code = :code.get_object_code(module)
+
+    if module_object_code == :error do
+      {:error, "get_object_code_failed"}
+    else
+      GenServer.call(@name, {:save_module, relay_name, module_object_code, opts}, :infinity)
+    end
   end
 
   def exec_func(relay_name, mfargs, opts \\ []) do
@@ -87,7 +93,7 @@ defmodule Giocci.Worker do
     {:reply, result, state}
   end
 
-  def handle_call({:save_module, relay_name, module, opts}, _from, state) do
+  def handle_call({:save_module, relay_name, module_object_code, opts}, _from, state) do
     client_name = state.client_name
     key_prefix = state.key_prefix
     registered_relays = state.registered_relays
@@ -100,7 +106,7 @@ defmodule Giocci.Worker do
     term_to_relay =
       %{
         data: %{
-          module_object_code: :code.get_object_code(module),
+          module_object_code: module_object_code,
           timeout: timeout,
           client_name: client_name
         },
@@ -109,7 +115,7 @@ defmodule Giocci.Worker do
 
     result =
       with :ok <- validate_relay_registered(relay_name, registered_relays),
-           :ok <- validate_module_found(module),
+           :ok <- validate_module_found(module_object_code),
            key <- Path.join(key_prefix, "giocci/save_module/client/#{relay_name}"),
            {:ok, term_from_relay} <- Utils.zenohex_get(session_id, key, timeout, term_to_relay) do
         # NOTE: term_from_relay is a list of {:ok, _} or {:error, _} tuples.
@@ -210,7 +216,7 @@ defmodule Giocci.Worker do
     {:noreply, state}
   end
 
-  defp validate_module_found(module) do
+  defp validate_module_found({module, _binary, _filename}) do
     if Code.ensure_loaded?(module) do
       :ok
     else

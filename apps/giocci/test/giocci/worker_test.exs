@@ -39,7 +39,7 @@ defmodule Giocci.WorkerTest do
 
     missing_module = Module.concat(["Giocci", "MissingModule"])
 
-    assert {:error, "module_not_found"} =
+    assert {:error, "get_object_code_failed"} =
              Giocci.Worker.save_module("relay-1", missing_module)
   end
 end

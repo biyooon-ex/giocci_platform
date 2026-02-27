@@ -43,14 +43,18 @@ Register your client with a relay:
 
 ### 2. Save Module
 
-Save an Elixir module to the relay (which distributes it to engines):
+Here, the following module is assumed to be in your Elixir project.
 
 ```elixir
 defmodule MyModule do
   def add(a, b), do: a + b
   def multiply(a, b), do: a * b
 end
+```
 
+Save an Elixir module to the relay (which distributes it to engines):
+
+```elixir
 :ok = Giocci.save_module("giocci_relay", MyModule)
 ```
 

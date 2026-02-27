@@ -25,11 +25,12 @@ defmodule GiocciEngine.EngineRegistrar do
     term_to_relay = %{data: %{engine_name: engine_name}, measurements: %{}}
 
     # Register this Engine to the specified Relay when starts
-    with key <- Path.join(key_prefix, "giocci/register/engine/#{relay_name}"),
-         {:ok, term_from_relay} <-
-           Utils.zenohex_get(session_id, key, _timeout = 5000, term_to_relay) do
-      {:ok, %{data: nil, measurements: _measurements}} = term_from_relay
-    end
+    {:ok, %{data: nil, measurements: _measurements}} =
+      with key <- Path.join(key_prefix, "giocci/register/engine/#{relay_name}"),
+           {:ok, term_from_relay} <-
+             Utils.zenohex_get(session_id, key, _timeout = 5000, term_to_relay) do
+        term_from_relay
+      end
 
     Logger.info("#{inspect(engine_name)} started.")
 

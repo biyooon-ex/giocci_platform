@@ -46,6 +46,14 @@ defmodule GiocciIntegrationTest.MixProject do
         Running inside Docker container (GIOCCI_ZENOH_HOME: #{System.get_env("GIOCCI_ZENOH_HOME")}) - executing tests directly
         """)
 
+        with host_arch <- System.get_env("HOST_ARCH"),
+             true <- not is_nil(host_arch),
+             true <- String.starts_with?(host_arch, "aarch64-apple-darwin") do
+          Mix.shell().info("Detected Apple Silicon host - refetching zenohex for arm64 linux")
+          Mix.Task.run("deps.clean", ["zenohex"])
+          Mix.Task.run("deps.get", ["zenohex"])
+        end
+
         # Start zenohd in background
         spawn(fn -> Mix.shell().cmd("zenohd") end)
 
@@ -60,7 +68,7 @@ defmodule GiocciIntegrationTest.MixProject do
         exit_code =
           Mix.shell().cmd({
             "docker",
-            ~w"compose run --rm --workdir /app/apps/giocci_integration_test zenohd" ++
+            ~w"compose run --rm --workdir /app/apps/giocci_integration_test --env HOST_ARCH=#{:erlang.system_info(:system_architecture)} zenohd" ++
               ~w"mix test" ++ args
           })
 

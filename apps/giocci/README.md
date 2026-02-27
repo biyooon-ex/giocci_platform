@@ -38,7 +38,7 @@ config :giocci,
 Register your client with a relay:
 
 ```elixir
-:ok = Giocci.register_client("my_relay")
+:ok = Giocci.register_client("giocci_relay")
 ```
 
 ### 2. Save Module
@@ -51,7 +51,7 @@ defmodule MyModule do
   def multiply(a, b), do: a * b
 end
 
-:ok = Giocci.save_module("my_relay", MyModule)
+:ok = Giocci.save_module("giocci_relay", MyModule)
 ```
 
 ### 3. Execute Function (Synchronous)
@@ -60,7 +60,7 @@ Execute a function on a remote engine:
 
 ```elixir
 # Execute MyModule.add(1, 2)
-result = Giocci.exec_func("my_relay", {MyModule, :add, [1, 2]})
+result = Giocci.exec_func("giocci_relay", {MyModule, :add, [1, 2]})
 # => 3
 ```
 
@@ -78,7 +78,7 @@ defmodule MyServer do
 
   def init(_) do
     # Execute async function
-    :ok = Giocci.exec_func_async("my_relay", {MyModule, :multiply, [3, 4]}, self())
+    :ok = Giocci.exec_func_async("giocci_relay", {MyModule, :multiply, [3, 4]}, self())
     {:ok, %{}}
   end
 
@@ -99,7 +99,7 @@ All functions accept an optional `opts` keyword list:
 Example:
 
 ```elixir
-Giocci.exec_func("my_relay", {MyModule, :add, [1, 2]}, timeout: 10_000)
+Giocci.exec_func("giocci_relay", {MyModule, :add, [1, 2]}, timeout: 10_000)
 ```
 
 ## Running with Docker (for Testing)

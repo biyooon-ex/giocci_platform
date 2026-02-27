@@ -180,7 +180,9 @@ defmodule GiocciIntegrationTestTest do
                         client_send_timestamp_to_relay: _,
                         relay_recv_timestamp_from_client: _,
                         relay_send_timestamp_to_client: _,
-                        client_recv_timestamp_from_relay: _
+                        client_recv_timestamp_from_relay: _,
+                        client_to_relay: _,
+                        relay_to_client: _
                       }}
 
       assert :ok == Giocci.save_module(@relay_name, GiocciIntegrationTest, measure_to: self())
@@ -194,7 +196,9 @@ defmodule GiocciIntegrationTestTest do
                         engine_send_timestamp_to_relay: _,
                         relay_recv_timestamp_from_engine: _,
                         relay_send_timestamp_to_client: _,
-                        client_recv_timestamp_from_relay: _
+                        client_recv_timestamp_from_relay: _,
+                        client_to_relay: _,
+                        relay_to_client: _
                       }}
 
       assert 3 ==
@@ -213,7 +217,11 @@ defmodule GiocciIntegrationTestTest do
                         client_send_timestamp_to_engine: _,
                         engine_recv_timestamp_from_client: _,
                         engine_send_timestamp_to_client: _,
-                        client_recv_timestamp_from_engine: _
+                        client_recv_timestamp_from_engine: _,
+                        client_to_relay: _,
+                        relay_to_client: _,
+                        client_to_engine: _,
+                        engine_to_client: _
                       }}
 
       :ok =
@@ -230,7 +238,9 @@ defmodule GiocciIntegrationTestTest do
                         client_send_timestamp_to_relay: _,
                         relay_recv_timestamp_from_client: _,
                         relay_send_timestamp_to_client: _,
-                        client_recv_timestamp_from_relay: _
+                        client_recv_timestamp_from_relay: _,
+                        client_to_relay: _,
+                        relay_to_client: _
                       }}
     end
   end

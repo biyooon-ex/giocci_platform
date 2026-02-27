@@ -257,6 +257,7 @@ defmodule Giocci.Worker do
     case result do
       {:ok, %{data: data, measurements: measurements}} ->
         if is_pid(measure_to) do
+          measurements = add_calculated_measurements(measurements)
           send(measure_to, {:giocci_measurements, measurements})
         end
 
@@ -264,6 +265,66 @@ defmodule Giocci.Worker do
 
       result ->
         result
+    end
+  end
+
+  defp add_calculated_measurements(measurements) do
+    measurements
+    |> add_client_to_relay()
+    |> add_relay_to_client()
+    |> add_client_to_engine()
+    |> add_engine_to_client()
+  end
+
+  defp add_client_to_relay(measurements) do
+    case measurements do
+      %{
+        client_send_timestamp_to_relay: client_send,
+        relay_recv_timestamp_from_client: relay_recv
+      } ->
+        Map.put(measurements, :client_to_relay, relay_recv - client_send)
+
+      _ ->
+        measurements
+    end
+  end
+
+  defp add_relay_to_client(measurements) do
+    case measurements do
+      %{
+        relay_send_timestamp_to_client: relay_send,
+        client_recv_timestamp_from_relay: client_recv
+      } ->
+        Map.put(measurements, :relay_to_client, client_recv - relay_send)
+
+      _ ->
+        measurements
+    end
+  end
+
+  defp add_client_to_engine(measurements) do
+    case measurements do
+      %{
+        client_send_timestamp_to_engine: client_send,
+        engine_recv_timestamp_from_client: engine_recv
+      } ->
+        Map.put(measurements, :client_to_engine, engine_recv - client_send)
+
+      _ ->
+        measurements
+    end
+  end
+
+  defp add_engine_to_client(measurements) do
+    case measurements do
+      %{
+        engine_send_timestamp_to_client: engine_send,
+        client_recv_timestamp_from_engine: client_recv
+      } ->
+        Map.put(measurements, :engine_to_client, client_recv - engine_send)
+
+      _ ->
+        measurements
     end
   end
 end

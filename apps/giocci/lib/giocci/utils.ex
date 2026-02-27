@@ -6,8 +6,10 @@ defmodule Giocci.Utils do
 
     case Zenohex.Session.get(session_id, key, timeout, payload: payload) do
       {:ok, [%Zenohex.Sample{payload: payload}]} ->
-        {:ok, recv_term} = decode(payload)
-        {:ok, add_recv_measurements(key, recv_term)}
+        case decode(payload) do
+          {:ok, recv_term} -> {:ok, add_recv_measurements(key, recv_term)}
+          error -> error
+        end
 
       {:error, :timeout} ->
         operation = extract_operation_description(key)

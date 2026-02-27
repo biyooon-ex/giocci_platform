@@ -52,16 +52,15 @@ defmodule GiocciEngine.ExecFuncAsyncHandler do
         Logger.debug("Exec func async successfully, #{inspect(mfargs)}.")
 
         term_to_client =
-          {:ok,
-           %{
-             data: %{
-               mfargs: mfargs,
-               exec_id: exec_id,
-               client_name: client_name,
-               result: result
-             },
-             measurements: term_from_client.measurements
-           }}
+          %{
+            data: %{
+              mfargs: mfargs,
+              exec_id: exec_id,
+              client_name: client_name,
+              result: result
+            },
+            measurements: term_from_client.measurements
+          }
 
         session_id = GiocciEngine.SessionManager.session_id()
         :ok = Utils.zenohex_put(session_id, key, term_to_client)

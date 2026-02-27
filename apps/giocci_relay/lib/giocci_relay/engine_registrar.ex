@@ -56,17 +56,17 @@ defmodule GiocciRelay.EngineRegistrar do
 
     {result, state} =
       with {:ok, term_from_engine} <- Utils.decode(binary),
-           {:ok, %{data: data, measurements: measurements}} <- term_from_engine,
-           key <- Path.join(key_prefix, "giocci/save_module/relay/#{data.engine_name}"),
+           {:ok, engine_name} <- extract(term_from_engine.data),
+           key <- Path.join(key_prefix, "giocci/save_module/relay/#{engine_name}"),
            {:ok, client_modules_map} <- GiocciRelay.ModuleStore.get(),
            term_to_engine <- %{
              data: %{relay_name: relay_name, client_modules_map: client_modules_map},
-             measurements: measurements
+             measurements: term_from_engine.measurements
            },
            {:ok, term_from_engine} <- Utils.zenohex_get(session_id, key, timeout, term_to_engine),
            {:ok, %{data: _data, measurements: measurements}} <- term_from_engine do
-        Logger.debug("#{inspect(data.engine_name)} registration completed successfully.")
-        registered_engines = [data.engine_name | registered_engines] |> Enum.uniq()
+        Logger.debug("#{inspect(engine_name)} registration completed successfully.")
+        registered_engines = [engine_name | registered_engines] |> Enum.uniq()
         state = %{state | registered_engines: registered_engines}
 
         term_to_engine = %{
@@ -103,6 +103,16 @@ defmodule GiocciRelay.EngineRegistrar do
       end
 
     {:reply, result, state}
+  end
+
+  defp extract(term) do
+    %{
+      engine_name: engine_name
+    } = term
+
+    {:ok, engine_name}
+  rescue
+    MatchError -> {:error, "term_not_expected"}
   end
 
   defp maybe_add_measurements(result, relay_recv_timestamp_from_engine) do

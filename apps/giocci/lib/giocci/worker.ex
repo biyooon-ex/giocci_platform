@@ -211,8 +211,8 @@ defmodule Giocci.Worker do
 
   def handle_info(%Zenohex.Sample{payload: binary}, state) do
     with {:ok, term_from_engine} <- Utils.decode(binary),
-         {:ok, %{data: %{exec_id: exec_id, result: result}}} <- term_from_engine,
-         %{server: server, subscriber_id: subscriber_id} <- ExecFuncAsyncStore.get(exec_id) do
+         {:ok, {exec_id, result}} <- extract(term_from_engine.data),
+         {:ok, %{server: server, subscriber_id: subscriber_id}} <- ExecFuncAsyncStore.get(exec_id) do
       send(server, {:giocci, result})
       :ok = ExecFuncAsyncStore.delete(exec_id)
       :ok = Zenohex.Subscriber.undeclare(subscriber_id)
@@ -235,6 +235,17 @@ defmodule Giocci.Worker do
     else
       {:error, "relay_not_registered"}
     end
+  end
+
+  defp extract(term) do
+    %{
+      exec_id: exec_id,
+      result: result
+    } = term
+
+    {:ok, {exec_id, result}}
+  rescue
+    MatchError -> {:error, "term_not_expected"}
   end
 
   # for save_module result

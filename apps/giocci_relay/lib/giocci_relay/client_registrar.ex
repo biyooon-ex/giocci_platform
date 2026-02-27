@@ -47,13 +47,13 @@ defmodule GiocciRelay.ClientRegistrar do
 
     {result, state} =
       with {:ok, term_from_client} <- Utils.decode(binary),
-           %{data: data, measurements: measurements} <- term_from_client do
-        Logger.debug("#{inspect(data.client_name)} registration completed successfully.")
-        registered_clients = [data.client_name | registered_clients] |> Enum.uniq()
+           {:ok, client_name} <- extract(term_from_client.data) do
+        Logger.debug("#{inspect(client_name)} registration completed successfully.")
+        registered_clients = [client_name | registered_clients] |> Enum.uniq()
 
         term_to_client = %{
           data: nil,
-          measurements: measurements
+          measurements: term_from_client.measurements
         }
 
         {{:ok, term_to_client}, %{state | registered_clients: registered_clients}}
@@ -78,6 +78,16 @@ defmodule GiocciRelay.ClientRegistrar do
       end
 
     {:reply, result, state}
+  end
+
+  defp extract(term) do
+    %{
+      client_name: client_name
+    } = term
+
+    {:ok, client_name}
+  rescue
+    MatchError -> {:error, "term_not_expected"}
   end
 
   defp maybe_add_measurements(result, relay_recv_timestamp_from_client) do

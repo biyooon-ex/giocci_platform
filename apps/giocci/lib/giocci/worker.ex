@@ -92,17 +92,16 @@ defmodule Giocci.Worker do
 
     timeout = Keyword.fetch!(opts, :timeout)
 
-    {:ok, module_object_code} = get_object_code(module)
-
     send_term =
       %{
-        module_object_code: module_object_code,
+        module_object_code: :code.get_object_code(module),
         timeout: timeout,
         client_name: client_name
       }
 
     result =
       with :ok <- validate_relay_registered(relay_name, registered_relays),
+           :ok <- validate_module_found(send_term[:module_object_code]),
            key <- Path.join(key_prefix, "giocci/save_module/client/#{relay_name}"),
            {:ok, binary} <- Utils.encode(send_term),
            {:ok, binary} <- Utils.zenohex_get(session_id, key, timeout, binary),
@@ -197,18 +196,18 @@ defmodule Giocci.Worker do
     {:noreply, state}
   end
 
+  defp validate_module_found(module) do
+    case module do
+      :error -> {:error, "module_not_found"}
+      _ -> :ok
+    end
+  end
+
   defp validate_relay_registered(relay_name, registered_relays) do
     if relay_name in registered_relays do
       :ok
     else
       {:error, "relay_not_registered"}
-    end
-  end
-
-  defp get_object_code(module) do
-    case :code.get_object_code(module) do
-      {name, binary, filename} -> {:ok, {name, binary, filename}}
-      :error -> {:error, "module_not_found"}
     end
   end
 end

@@ -192,3 +192,14 @@ sequenceDiagram
 
 See [FOR_DEVELOPERS.md](FOR_DEVELOPERS.md) for development instructions, testing, and release procedures.
 
+## Publication (Papers/Presentations)
+
+- [Presentation ([Slide](https://speakerdeck.com/takasehideki/giocci-a-resource-permeating-computing-platform-for-wide-area-distributed-systems) | [Video](https://goatmire.bold.video/v/9wjke))] Giocci: a resource-permeating computing platform for wide-area distributed systems
+  - [Goatmire Elixir](https://goatmire.com/) 2025 @ Varberg, Sweden
+  - Hideki Takase and Yutaka Kikuchi
+- [[Paper in Japanese](https://ipsj.ixsq.nii.ac.jp/records/2001056)] A wide-area distributed processing method by integrating communication protocol Zenoh into resource permeating computing platform Giocci (資源透過型プラットフォームGiocciへの通信プロトコルZenohの統合による広域分散処理手法)
+  - IPSJ SIG Report, Vol. 2025-ARC-260, No. 5.
+  - Keiya Ito, Shintaro Hosoai, Kazuma Nishiuchi, Mitsuhiro Osaki, Yutaka Kikuchi, Satoru Matsushima and Hideki Takase
+- [[Paper in Japanese](https://ipsj.ixsq.nii.ac.jp/records/225728)] Giocci: A distributed computation platform that permeably handles computation resources on MEC and papric clouds on 5G networks (5GネットワークのMECとパプリッククラウド上の計算資源を透過的に扱う分散計算プラットフォームの提案)
+  - IPSJ SIG Report, Vol. 2023-IOT-61, No. 20.
+  - Mitsuhiro Osaki, Kazuma Nishiuchi, Ikuo Nakagawa, Hideki Takase, Shintaro Hosoai, Shunsuke Kikuchi and Yutaka Kikuchi

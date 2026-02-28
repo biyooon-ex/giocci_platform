@@ -176,7 +176,7 @@ Common issues:
 
 ## API Reference
 
-See the [HexDocs](https://hexdocs.pm/giocci) for detailed API documentation.
+See the [HexDocs](https://hexdocs.pm/giocci/api-reference.html) for detailed API documentation.
 
 ## Architecture
 

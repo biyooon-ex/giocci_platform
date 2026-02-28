@@ -73,6 +73,8 @@ All components require:
 
 4. **Use in your application**: Once you're familiar with the platform, integrate Giocci into your Elixir application. See the [Installation](apps/giocci/README.md#installation) and [Usage](apps/giocci/README.md#usage) sections in the Giocci README
 
+The [giocci_example](https://github.com/biyooon-ex/giocci_example) repository provides the example code and its instruction for Giocci Client.
+
 ## Architecture
 
 ### Components

@@ -274,6 +274,8 @@ defmodule Giocci.Worker do
     |> add_relay_to_client()
     |> add_client_to_engine()
     |> add_engine_to_client()
+    |> add_relay_to_engine()
+    |> add_engine_to_relay()
   end
 
   defp add_client_to_relay(measurements) do
@@ -322,6 +324,32 @@ defmodule Giocci.Worker do
         client_recv_timestamp_from_engine: client_recv
       } ->
         Map.put(measurements, :engine_to_client, client_recv - engine_send)
+
+      _ ->
+        measurements
+    end
+  end
+
+  defp add_relay_to_engine(measurements) do
+    case measurements do
+      %{
+        relay_send_timestamp_to_engine: relay_send,
+        engine_recv_timestamp_from_relay: engine_recv
+      } ->
+        Map.put(measurements, :relay_to_engine, engine_recv - relay_send)
+
+      _ ->
+        measurements
+    end
+  end
+
+  defp add_engine_to_relay(measurements) do
+    case measurements do
+      %{
+        engine_send_timestamp_to_relay: engine_send,
+        relay_recv_timestamp_from_engine: relay_recv
+      } ->
+        Map.put(measurements, :engine_to_relay, relay_recv - engine_send)
 
       _ ->
         measurements

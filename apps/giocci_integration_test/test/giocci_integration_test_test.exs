@@ -198,6 +198,8 @@ defmodule GiocciIntegrationTestTest do
                         relay_send_timestamp_to_client: _,
                         client_recv_timestamp_from_relay: _,
                         client_to_relay: _,
+                        relay_to_engine: _,
+                        engine_to_relay: _,
                         relay_to_client: _
                       }}
 

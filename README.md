@@ -187,6 +187,7 @@ sequenceDiagram
 - Client <-> Relay uses Query/Reply; Engine uses Queryable for sync and Subscriber/Publisher for async.
 - All communication is via Zenohex key space; `key_prefix` may be prepended.
 - Engine selection is currently first-registered in `GiocciRelay.EngineRegistrar.select_engine/0`.
+- Modules dynamically defined in IEx (without a corresponding object file) are not supported.
 
 ## For Developers
 

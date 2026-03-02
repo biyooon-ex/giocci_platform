@@ -101,7 +101,7 @@ defmodule Giocci.Worker do
 
     result =
       with :ok <- validate_relay_registered(relay_name, registered_relays),
-           :ok <- validate_module_found(module),
+           :ok <- validate_module_found(send_term[:module_object_code]),
            key <- Path.join(key_prefix, "giocci/save_module/client/#{relay_name}"),
            {:ok, binary} <- Utils.encode(send_term),
            {:ok, binary} <- Utils.zenohex_get(session_id, key, timeout, binary),
@@ -197,10 +197,9 @@ defmodule Giocci.Worker do
   end
 
   defp validate_module_found(module) do
-    if Code.ensure_loaded?(module) do
-      :ok
-    else
-      {:error, "module_not_found"}
+    case module do
+      :error -> {:error, "module_not_found"}
+      _ -> :ok
     end
   end
 

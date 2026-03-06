@@ -4,7 +4,7 @@ defmodule GiocciEngine.MixProject do
   def project do
     [
       app: :giocci_engine,
-      version: "0.3.1-rc.1",
+      version: "0.3.1-rc.2",
       build_path: "./_build",
       config_path: "./config/config.exs",
       deps_path: "./deps",

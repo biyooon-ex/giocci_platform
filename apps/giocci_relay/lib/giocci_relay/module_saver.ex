@@ -37,7 +37,7 @@ defmodule GiocciRelay.ModuleSaver do
         %Zenohex.Query{key_expr: save_module_key, payload: binary, zenoh_query: zenoh_query},
         %{save_module_key: save_module_key} = state
       ) do
-    relay_recv_timestamp_from_client = System.system_time(:millisecond)
+    relay_recv_timestamp_from_client = System.os_time(:microsecond)
     relay_name = state.relay_name
     key_prefix = state.key_prefix
 
@@ -102,7 +102,7 @@ defmodule GiocciRelay.ModuleSaver do
               measurements =
                 Map.merge(measurements, %{
                   relay_recv_timestamp_from_client: relay_recv_timestamp_from_client,
-                  relay_send_timestamp_to_client: System.system_time(:millisecond)
+                  relay_send_timestamp_to_client: System.os_time(:microsecond)
                 })
 
               {:ok, %{data: data, measurements: measurements}}

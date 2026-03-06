@@ -39,7 +39,7 @@ defmodule GiocciRelay.EngineInquiryHandler do
         %Zenohex.Query{key_expr: inquiry_engine_key, payload: binary, zenoh_query: zenoh_query},
         %{inquiry_engine_key: inquiry_engine_key} = state
       ) do
-    relay_recv_timestamp_from_client = System.system_time(:millisecond)
+    relay_recv_timestamp_from_client = System.os_time(:microsecond)
 
     result =
       with {:ok, term_from_client} <- Utils.decode(binary),
@@ -85,7 +85,7 @@ defmodule GiocciRelay.EngineInquiryHandler do
         measurements =
           Map.merge(measurements, %{
             relay_recv_timestamp_from_client: relay_recv_timestamp_from_client,
-            relay_send_timestamp_to_client: System.system_time(:millisecond)
+            relay_send_timestamp_to_client: System.os_time(:microsecond)
           })
 
         {:ok, %{data: data, measurements: measurements}}

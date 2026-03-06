@@ -42,7 +42,7 @@ defmodule GiocciRelay.ClientRegistrar do
         %Zenohex.Query{key_expr: register_client_key, payload: binary, zenoh_query: zenoh_query},
         %{register_client_key: register_client_key} = state
       ) do
-    relay_recv_timestamp_from_client = System.system_time(:millisecond)
+    relay_recv_timestamp_from_client = System.os_time(:microsecond)
     registered_clients = state.registered_clients
 
     {result, state} =
@@ -96,7 +96,7 @@ defmodule GiocciRelay.ClientRegistrar do
         measurements =
           Map.merge(measurements, %{
             relay_recv_timestamp_from_client: relay_recv_timestamp_from_client,
-            relay_send_timestamp_to_client: System.system_time(:millisecond)
+            relay_send_timestamp_to_client: System.os_time(:microsecond)
           })
 
         {:ok, %{data: data, measurements: measurements}}

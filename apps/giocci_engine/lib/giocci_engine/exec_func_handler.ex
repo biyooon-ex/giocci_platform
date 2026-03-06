@@ -41,7 +41,7 @@ defmodule GiocciEngine.ExecFuncHandler do
         %Zenohex.Query{key_expr: exec_func_key, payload: binary, zenoh_query: zenoh_query},
         %{exec_func_key: exec_func_key} = state
       ) do
-    engine_recv_timestamp_from_client = System.system_time(:millisecond)
+    engine_recv_timestamp_from_client = System.os_time(:microsecond)
 
     fun = fn ->
       result =
@@ -87,7 +87,7 @@ defmodule GiocciEngine.ExecFuncHandler do
         measurements =
           Map.merge(measurements, %{
             engine_recv_timestamp_from_client: engine_recv_timestamp_from_client,
-            engine_send_timestamp_to_client: System.system_time(:millisecond)
+            engine_send_timestamp_to_client: System.os_time(:microsecond)
           })
 
         {:ok, %{data: data, measurements: measurements}}

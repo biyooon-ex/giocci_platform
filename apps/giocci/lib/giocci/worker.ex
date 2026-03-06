@@ -284,7 +284,8 @@ defmodule Giocci.Worker do
         client_send_timestamp_to_relay: client_send,
         relay_recv_timestamp_from_client: relay_recv
       } ->
-        Map.put(measurements, :client_to_relay, relay_recv - client_send)
+        client_to_relay = ((relay_recv - client_send) / 1000) |> Float.round(3)
+        Map.put(measurements, :client_to_relay, client_to_relay)
 
       _ ->
         measurements
@@ -297,7 +298,8 @@ defmodule Giocci.Worker do
         relay_send_timestamp_to_client: relay_send,
         client_recv_timestamp_from_relay: client_recv
       } ->
-        Map.put(measurements, :relay_to_client, client_recv - relay_send)
+        relay_to_client = ((client_recv - relay_send) / 1000) |> Float.round(3)
+        Map.put(measurements, :relay_to_client, relay_to_client)
 
       _ ->
         measurements
@@ -310,7 +312,8 @@ defmodule Giocci.Worker do
         client_send_timestamp_to_engine: client_send,
         engine_recv_timestamp_from_client: engine_recv
       } ->
-        Map.put(measurements, :client_to_engine, engine_recv - client_send)
+        client_to_engine = ((engine_recv - client_send) / 1000) |> Float.round(3)
+        Map.put(measurements, :client_to_engine, client_to_engine)
 
       _ ->
         measurements
@@ -323,7 +326,8 @@ defmodule Giocci.Worker do
         engine_send_timestamp_to_client: engine_send,
         client_recv_timestamp_from_engine: client_recv
       } ->
-        Map.put(measurements, :engine_to_client, client_recv - engine_send)
+        engine_to_client = ((client_recv - engine_send) / 1000) |> Float.round(3)
+        Map.put(measurements, :engine_to_client, engine_to_client)
 
       _ ->
         measurements
@@ -336,7 +340,8 @@ defmodule Giocci.Worker do
         relay_send_timestamp_to_engine: relay_send,
         engine_recv_timestamp_from_relay: engine_recv
       } ->
-        Map.put(measurements, :relay_to_engine, engine_recv - relay_send)
+        relay_to_engine = ((engine_recv - relay_send) / 1000) |> Float.round(3)
+        Map.put(measurements, :relay_to_engine, relay_to_engine)
 
       _ ->
         measurements
@@ -349,7 +354,8 @@ defmodule Giocci.Worker do
         engine_send_timestamp_to_relay: engine_send,
         relay_recv_timestamp_from_engine: relay_recv
       } ->
-        Map.put(measurements, :engine_to_relay, relay_recv - engine_send)
+        engine_to_relay = ((relay_recv - engine_send) / 1000) |> Float.round(3)
+        Map.put(measurements, :engine_to_relay, engine_to_relay)
 
       _ ->
         measurements

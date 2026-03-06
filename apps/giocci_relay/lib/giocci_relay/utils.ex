@@ -75,7 +75,7 @@ defmodule GiocciRelay.Utils do
         true -> raise "Unexpected condition reached"
       end
 
-    measurements = Map.put(measurements, key, System.system_time(:millisecond))
+    measurements = Map.put(measurements, key, System.os_time(:microsecond))
     %{send_term | measurements: measurements}
   end
 
@@ -88,7 +88,7 @@ defmodule GiocciRelay.Utils do
             true -> raise "Unexpected condition reached"
           end
 
-        measurements = Map.put(measurements, key, System.system_time(:millisecond))
+        measurements = Map.put(measurements, key, System.os_time(:microsecond))
         {:ok, %{data: data, measurements: measurements}}
 
       recv_term ->

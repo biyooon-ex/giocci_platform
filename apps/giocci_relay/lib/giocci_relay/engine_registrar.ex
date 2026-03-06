@@ -46,7 +46,7 @@ defmodule GiocciRelay.EngineRegistrar do
         %Zenohex.Query{key_expr: register_engine_key, payload: binary, zenoh_query: zenoh_query},
         %{register_engine_key: register_engine_key} = state
       ) do
-    relay_recv_timestamp_from_engine = System.system_time(:millisecond)
+    relay_recv_timestamp_from_engine = System.os_time(:microsecond)
     relay_name = state.relay_name
     key_prefix = state.key_prefix
     registered_engines = state.registered_engines
@@ -121,7 +121,7 @@ defmodule GiocciRelay.EngineRegistrar do
         measurements =
           Map.merge(measurements, %{
             relay_recv_timestamp_from_engine: relay_recv_timestamp_from_engine,
-            relay_send_timestamp_to_engine: System.system_time(:millisecond)
+            relay_send_timestamp_to_engine: System.os_time(:microsecond)
           })
 
         {:ok, %{data: data, measurements: measurements}}

@@ -82,7 +82,7 @@ defmodule Giocci.Utils do
         true -> raise "Unexpected condition reached"
       end
 
-    measurements = Map.put(measurements, key, System.system_time(:millisecond))
+    measurements = Map.put(measurements, key, System.os_time(:microsecond))
     %{send_term | measurements: measurements}
   end
 
@@ -97,7 +97,7 @@ defmodule Giocci.Utils do
             true -> raise "Unexpected condition reached"
           end
 
-        measurements = Map.put(measurements, key, System.system_time(:millisecond))
+        measurements = Map.put(measurements, key, System.os_time(:microsecond))
         {:ok, %{data: data, measurements: measurements}}
 
       {:ok, list} when is_list(list) ->
@@ -110,7 +110,7 @@ defmodule Giocci.Utils do
 
         Enum.map(list, fn
           {:ok, %{data: data, measurements: measurements}} ->
-            measurements = Map.put(measurements, key, System.system_time(:millisecond))
+            measurements = Map.put(measurements, key, System.os_time(:microsecond))
             {:ok, %{data: data, measurements: measurements}}
 
           error ->

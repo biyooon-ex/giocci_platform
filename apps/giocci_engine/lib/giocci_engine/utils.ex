@@ -1,10 +1,15 @@
 defmodule GiocciEngine.Utils do
   @moduledoc false
 
-  def zenohex_get(session_id, key, timeout, payload) do
+  def zenohex_get(session_id, key, timeout, send_term) do
+    {:ok, payload} = encode(add_send_measurements(key, send_term))
+
     case Zenohex.Session.get(session_id, key, timeout, payload: payload) do
       {:ok, [%Zenohex.Sample{payload: payload}]} ->
-        {:ok, payload}
+        case decode(payload) do
+          {:ok, recv_term} -> {:ok, add_recv_measurements(key, recv_term)}
+          error -> error
+        end
 
       {:error, :timeout} ->
         operation = extract_operation_description(key)
@@ -16,6 +21,16 @@ defmodule GiocciEngine.Utils do
         {:error,
          "connection_failed: #{target_info}. Please ensure the target component is running. (Details: #{inspect(reason)})"}
     end
+  end
+
+  def zenohex_reply(zenoh_query, key, term) do
+    {:ok, payload} = encode(term)
+    Zenohex.Query.reply(zenoh_query, key, payload)
+  end
+
+  def zenohex_put(session_id, key, term) do
+    {:ok, payload} = encode(term)
+    Zenohex.Session.put(session_id, key, payload)
   end
 
   defp extract_operation_description(key) do
@@ -73,6 +88,36 @@ defmodule GiocciEngine.Utils do
       :ok
     else
       {:error, "module_not_saved"}
+    end
+  end
+
+  defp add_send_measurements(key, %{measurements: measurements} = send_term) do
+    key =
+      if String.contains?(key, "/register/engine/") do
+        :engine_send_timestamp_to_relay
+      else
+        raise "Unexpected condition reached"
+      end
+
+    measurements = Map.put(measurements, key, System.os_time(:microsecond))
+    %{send_term | measurements: measurements}
+  end
+
+  defp add_recv_measurements(key, recv_term) do
+    key =
+      if String.contains?(key, "/register/engine/") do
+        :engine_recv_timestamp_from_relay
+      else
+        raise "Unexpected condition reached"
+      end
+
+    case recv_term do
+      {:ok, %{data: data, measurements: measurements}} ->
+        measurements = Map.put(measurements, key, System.os_time(:microsecond))
+        {:ok, %{data: data, measurements: measurements}}
+
+      error ->
+        error
     end
   end
 end

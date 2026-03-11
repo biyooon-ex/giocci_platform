@@ -8,14 +8,17 @@ defmodule Giocci.ExecFuncAsyncStore do
 
   # API
 
-  def get(key, default \\ nil) do
-    GenServer.call(@name, {:get, key, default})
+  @spec get(reference()) :: {:ok, map()} | {:error, String.t()}
+  def get(key) do
+    GenServer.call(@name, {:get, key})
   end
 
+  @spec put(reference(), map()) :: :ok
   def put(key, value) do
     GenServer.call(@name, {:put, key, value})
   end
 
+  @spec delete(reference()) :: :ok
   def delete(key) do
     GenServer.call(@name, {:delete, key})
   end
@@ -51,8 +54,14 @@ defmodule Giocci.ExecFuncAsyncStore do
     {:noreply, state}
   end
 
-  def handle_call({:get, key, default}, _from, state) do
-    {:reply, Map.get(state, key, default), state}
+  def handle_call({:get, key}, _from, state) do
+    value = Map.get(state, key)
+
+    if is_nil(value) do
+      {:reply, {:error, "not_found"}, state}
+    else
+      {:reply, {:ok, value}, state}
+    end
   end
 
   def handle_call({:put, key, value}, _from, state) do

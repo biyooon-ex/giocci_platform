@@ -1,10 +1,18 @@
 defmodule GiocciPlatform.MixProject do
   use Mix.Project
 
+  @version Path.join(__DIR__, "VERSIONS")
+           |> File.read!()
+           |> String.split("\n")
+           |> Enum.find_value(fn
+             "PROJECT_VERSION=" <> version -> String.trim(version)
+             _ -> false
+           end) || raise("PROJECT_VERSION not found in VERSIONS")
+
   def project do
     [
       apps_path: "apps",
-      version: "0.1.0",
+      version: @version,
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       aliases: aliases()

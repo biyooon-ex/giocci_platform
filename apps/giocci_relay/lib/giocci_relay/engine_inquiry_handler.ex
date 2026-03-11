@@ -39,24 +39,31 @@ defmodule GiocciRelay.EngineInquiryHandler do
         %Zenohex.Query{key_expr: inquiry_engine_key, payload: binary, zenoh_query: zenoh_query},
         %{inquiry_engine_key: inquiry_engine_key} = state
       ) do
+    relay_recv_timestamp_from_client = System.os_time(:microsecond)
+
     result =
-      with {:ok, recv_term} <- Utils.decode(binary),
-           {:ok, {mfargs, client_name}} <- extract(recv_term),
+      with {:ok, term_from_client} <- Utils.decode(binary),
+           {:ok, {mfargs, client_name}} <- extract(term_from_client.data),
            :ok <- GiocciRelay.ClientRegistrar.validate_registered(client_name),
            {:ok, engine_name} <- GiocciRelay.EngineRegistrar.select_engine() do
         Logger.debug(
           "#{inspect(engine_name)} is selected for #{inspect(client_name)}'s #{inspect(mfargs)}."
         )
 
-        {:ok, %{engine_name: engine_name}}
+        term_to_client = %{
+          data: %{engine_name: engine_name},
+          measurements: term_from_client.measurements
+        }
+
+        {:ok, term_to_client}
       else
         error ->
           Logger.error("Inquiry engine failed, #{inspect(error)}.")
           error
       end
 
-    {:ok, binary} = Utils.encode(result)
-    :ok = Zenohex.Query.reply(zenoh_query, inquiry_engine_key, binary)
+    result = maybe_add_measurements(result, relay_recv_timestamp_from_client)
+    :ok = Utils.zenohex_reply(zenoh_query, inquiry_engine_key, result)
 
     {:noreply, state}
   end
@@ -70,5 +77,21 @@ defmodule GiocciRelay.EngineInquiryHandler do
     {:ok, {mfargs, client_name}}
   rescue
     MatchError -> {:error, "term_not_expected"}
+  end
+
+  defp maybe_add_measurements(result, relay_recv_timestamp_from_client) do
+    case result do
+      {:ok, %{data: data, measurements: measurements}} ->
+        measurements =
+          Map.merge(measurements, %{
+            relay_recv_timestamp_from_client: relay_recv_timestamp_from_client,
+            relay_send_timestamp_to_client: System.os_time(:microsecond)
+          })
+
+        {:ok, %{data: data, measurements: measurements}}
+
+      result ->
+        result
+    end
   end
 end

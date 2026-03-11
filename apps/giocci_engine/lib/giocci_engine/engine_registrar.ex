@@ -22,13 +22,14 @@ defmodule GiocciEngine.EngineRegistrar do
 
     session_id = GiocciEngine.SessionManager.session_id()
 
+    term_to_relay = %{data: %{engine_name: engine_name}, measurements: %{}}
+
     # Register this Engine to the specified Relay when starts
-    :ok =
+    {:ok, %{data: nil, measurements: _measurements}} =
       with key <- Path.join(key_prefix, "giocci/register/engine/#{relay_name}"),
-           {:ok, binary} <- Utils.encode(%{engine_name: engine_name}),
-           {:ok, binary} <- Utils.zenohex_get(session_id, key, _timeout = 5000, binary),
-           {:ok, recv_term} <- Utils.decode(binary) do
-        recv_term
+           {:ok, term_from_relay} <-
+             Utils.zenohex_get(session_id, key, _timeout = 5000, term_to_relay) do
+        term_from_relay
       end
 
     Logger.info("#{inspect(engine_name)} started.")

@@ -1,10 +1,15 @@
 defmodule GiocciRelay.Utils do
   @moduledoc false
 
-  def zenohex_get(session_id, key, timeout, payload) do
+  def zenohex_get(session_id, key, timeout, send_term) do
+    {:ok, payload} = encode(add_send_measurements(key, send_term))
+
     case Zenohex.Session.get(session_id, key, timeout, payload: payload) do
       {:ok, [%Zenohex.Sample{payload: payload}]} ->
-        {:ok, payload}
+        case decode(payload) do
+          {:ok, recv_term} -> {:ok, add_recv_measurements(key, recv_term)}
+          error -> error
+        end
 
       {:error, :timeout} ->
         operation = extract_operation_description(key)
@@ -16,6 +21,11 @@ defmodule GiocciRelay.Utils do
         {:error,
          "connection_failed: #{target_info}. Please ensure the target component is running. (Details: #{inspect(reason)})"}
     end
+  end
+
+  def zenohex_reply(zenoh_query, key, term) do
+    {:ok, payload} = encode(term)
+    Zenohex.Query.reply(zenoh_query, key, payload)
   end
 
   defp extract_operation_description(key) do
@@ -56,5 +66,33 @@ defmodule GiocciRelay.Utils do
     {:ok, :erlang.binary_to_term(payload)}
   rescue
     ArgumentError -> {:error, "decode_failed"}
+  end
+
+  defp add_send_measurements(key, %{measurements: measurements} = send_term) do
+    key =
+      cond do
+        String.contains?(key, "/save_module/relay/") -> :relay_send_timestamp_to_engine
+        true -> raise "Unexpected condition reached"
+      end
+
+    measurements = Map.put(measurements, key, System.os_time(:microsecond))
+    %{send_term | measurements: measurements}
+  end
+
+  defp add_recv_measurements(key, recv_term) do
+    case recv_term do
+      {:ok, %{data: data, measurements: measurements}} ->
+        key =
+          cond do
+            String.contains?(key, "/save_module/relay/") -> :relay_recv_timestamp_from_engine
+            true -> raise "Unexpected condition reached"
+          end
+
+        measurements = Map.put(measurements, key, System.os_time(:microsecond))
+        {:ok, %{data: data, measurements: measurements}}
+
+      recv_term ->
+        recv_term
+    end
   end
 end

@@ -41,22 +41,24 @@ defmodule GiocciEngine.ExecFuncHandler do
         %Zenohex.Query{key_expr: exec_func_key, payload: binary, zenoh_query: zenoh_query},
         %{exec_func_key: exec_func_key} = state
       ) do
+    engine_recv_timestamp_from_client = System.os_time(:microsecond)
+
     fun = fn ->
       result =
-        with {:ok, recv_term} <- Utils.decode(binary),
-             {:ok, {{m, _f, _args} = mfargs, _client_name}} <- extract(recv_term),
+        with {:ok, term_from_client} <- Utils.decode(binary),
+             {:ok, {{m, _f, _args} = mfargs, _client_name}} <- extract(term_from_client.data),
              :ok <- Utils.validate_module_saved(m),
              {:ok, result} <- Utils.exec_func(mfargs) do
           Logger.debug("Exec func successfully, #{inspect(mfargs)}.")
-          result
+          {:ok, %{data: result, measurements: term_from_client.measurements}}
         else
           error ->
             Logger.error("Exec func failed, #{inspect(error)}.")
             error
         end
 
-      {:ok, binary} = Utils.encode(result)
-      :ok = Zenohex.Query.reply(zenoh_query, exec_func_key, binary)
+      result = maybe_add_measurements(result, engine_recv_timestamp_from_client)
+      :ok = Utils.zenohex_reply(zenoh_query, exec_func_key, result)
     end
 
     {:ok, _pid} =
@@ -77,5 +79,21 @@ defmodule GiocciEngine.ExecFuncHandler do
     {:ok, {mfargs, client_name}}
   rescue
     MatchError -> {:error, "term_not_expected"}
+  end
+
+  defp maybe_add_measurements(result, engine_recv_timestamp_from_client) do
+    case result do
+      {:ok, %{data: data, measurements: measurements}} ->
+        measurements =
+          Map.merge(measurements, %{
+            engine_recv_timestamp_from_client: engine_recv_timestamp_from_client,
+            engine_send_timestamp_to_client: System.os_time(:microsecond)
+          })
+
+        {:ok, %{data: data, measurements: measurements}}
+
+      result ->
+        result
+    end
   end
 end

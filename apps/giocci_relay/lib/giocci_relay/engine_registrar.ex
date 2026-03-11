@@ -46,33 +46,43 @@ defmodule GiocciRelay.EngineRegistrar do
         %Zenohex.Query{key_expr: register_engine_key, payload: binary, zenoh_query: zenoh_query},
         %{register_engine_key: register_engine_key} = state
       ) do
+    relay_recv_timestamp_from_engine = System.os_time(:microsecond)
     relay_name = state.relay_name
     key_prefix = state.key_prefix
     registered_engines = state.registered_engines
 
     session_id = GiocciRelay.SessionManager.session_id()
+    timeout = 5000
 
     {result, state} =
-      with {:ok, %{engine_name: engine_name}} <- Utils.decode(binary),
+      with {:ok, term_from_engine} <- Utils.decode(binary),
+           {:ok, engine_name} <- extract(term_from_engine.data),
            key <- Path.join(key_prefix, "giocci/save_module/relay/#{engine_name}"),
            {:ok, client_modules_map} <- GiocciRelay.ModuleStore.get(),
-           {:ok, binary} <-
-             Utils.encode(%{relay_name: relay_name, client_modules_map: client_modules_map}),
-           {:ok, binary} <- Utils.zenohex_get(session_id, key, _timeout = 5000, binary),
-           {:ok, recv_term} <- Utils.decode(binary),
-           :ok <- recv_term do
+           term_to_engine <- %{
+             data: %{relay_name: relay_name, client_modules_map: client_modules_map},
+             measurements: term_from_engine.measurements
+           },
+           {:ok, term_from_engine} <- Utils.zenohex_get(session_id, key, timeout, term_to_engine),
+           {:ok, %{data: _data, measurements: measurements}} <- term_from_engine do
         Logger.debug("#{inspect(engine_name)} registration completed successfully.")
         registered_engines = [engine_name | registered_engines] |> Enum.uniq()
         state = %{state | registered_engines: registered_engines}
-        {:ok, state}
+
+        term_to_engine = %{
+          data: nil,
+          measurements: measurements
+        }
+
+        {{:ok, term_to_engine}, state}
       else
         error ->
           Logger.error("Engine registration failed by #{inspect(error)}.")
           {error, state}
       end
 
-    {:ok, binary} = Utils.encode(result)
-    :ok = Zenohex.Query.reply(zenoh_query, register_engine_key, binary)
+    result = maybe_add_measurements(result, relay_recv_timestamp_from_engine)
+    :ok = Utils.zenohex_reply(zenoh_query, register_engine_key, result)
 
     {:noreply, state}
   end
@@ -93,5 +103,31 @@ defmodule GiocciRelay.EngineRegistrar do
       end
 
     {:reply, result, state}
+  end
+
+  defp extract(term) do
+    %{
+      engine_name: engine_name
+    } = term
+
+    {:ok, engine_name}
+  rescue
+    MatchError -> {:error, "term_not_expected"}
+  end
+
+  defp maybe_add_measurements(result, relay_recv_timestamp_from_engine) do
+    case result do
+      {:ok, %{data: data, measurements: measurements}} ->
+        measurements =
+          Map.merge(measurements, %{
+            relay_recv_timestamp_from_engine: relay_recv_timestamp_from_engine,
+            relay_send_timestamp_to_engine: System.os_time(:microsecond)
+          })
+
+        {:ok, %{data: data, measurements: measurements}}
+
+      result ->
+        result
+    end
   end
 end

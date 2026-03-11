@@ -164,4 +164,86 @@ defmodule GiocciIntegrationTestTest do
              "Expected 'may not be running' message but got: #{inspect(result)}"
     end
   end
+
+  describe "measure_to feature" do
+    setup do
+      setup_relay_and_client()
+      setup_engine()
+      :ok
+    end
+
+    test "receives measurements each operation via measure_to" do
+      assert :ok == Giocci.register_client(@relay_name, measure_to: self())
+
+      assert_receive {:giocci_measurements,
+                      %{
+                        client_send_timestamp_to_relay: _,
+                        relay_recv_timestamp_from_client: _,
+                        relay_send_timestamp_to_client: _,
+                        client_recv_timestamp_from_relay: _,
+                        client_to_relay: _,
+                        relay_to_client: _
+                      }}
+
+      assert :ok == Giocci.save_module(@relay_name, GiocciIntegrationTest, measure_to: self())
+
+      assert_receive {:giocci_measurements,
+                      %{
+                        client_send_timestamp_to_relay: _,
+                        relay_recv_timestamp_from_client: _,
+                        relay_send_timestamp_to_engine: _,
+                        engine_recv_timestamp_from_relay: _,
+                        engine_send_timestamp_to_relay: _,
+                        relay_recv_timestamp_from_engine: _,
+                        relay_send_timestamp_to_client: _,
+                        client_recv_timestamp_from_relay: _,
+                        client_to_relay: _,
+                        relay_to_engine: _,
+                        engine_to_relay: _,
+                        relay_to_client: _
+                      }}
+
+      assert 3 ==
+               Giocci.exec_func(
+                 @relay_name,
+                 {GiocciIntegrationTest, :add, [1, 2]},
+                 measure_to: self()
+               )
+
+      assert_receive {:giocci_measurements,
+                      %{
+                        client_send_timestamp_to_relay: _,
+                        relay_recv_timestamp_from_client: _,
+                        relay_send_timestamp_to_client: _,
+                        client_recv_timestamp_from_relay: _,
+                        client_send_timestamp_to_engine: _,
+                        engine_recv_timestamp_from_client: _,
+                        engine_send_timestamp_to_client: _,
+                        client_recv_timestamp_from_engine: _,
+                        client_to_relay: _,
+                        relay_to_client: _,
+                        client_to_engine: _,
+                        engine_to_client: _
+                      }}
+
+      :ok =
+        Giocci.exec_func_async(@relay_name, {GiocciIntegrationTest, :add, [1, 2]}, self(),
+          measure_to: self()
+        )
+
+      assert_receive {:giocci, 3},
+                     @async_message_timeout,
+                     "Expected async response with result 3"
+
+      assert_receive {:giocci_measurements,
+                      %{
+                        client_send_timestamp_to_relay: _,
+                        relay_recv_timestamp_from_client: _,
+                        relay_send_timestamp_to_client: _,
+                        client_recv_timestamp_from_relay: _,
+                        client_to_relay: _,
+                        relay_to_client: _
+                      }}
+    end
+  end
 end

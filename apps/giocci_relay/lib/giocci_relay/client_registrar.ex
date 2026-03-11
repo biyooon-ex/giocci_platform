@@ -42,21 +42,29 @@ defmodule GiocciRelay.ClientRegistrar do
         %Zenohex.Query{key_expr: register_client_key, payload: binary, zenoh_query: zenoh_query},
         %{register_client_key: register_client_key} = state
       ) do
+    relay_recv_timestamp_from_client = System.os_time(:microsecond)
     registered_clients = state.registered_clients
 
     {result, state} =
-      with {:ok, %{client_name: client_name}} <- Utils.decode(binary) do
+      with {:ok, term_from_client} <- Utils.decode(binary),
+           {:ok, client_name} <- extract(term_from_client.data) do
         Logger.debug("#{inspect(client_name)} registration completed successfully.")
         registered_clients = [client_name | registered_clients] |> Enum.uniq()
-        {:ok, %{state | registered_clients: registered_clients}}
+
+        term_to_client = %{
+          data: nil,
+          measurements: term_from_client.measurements
+        }
+
+        {{:ok, term_to_client}, %{state | registered_clients: registered_clients}}
       else
         error ->
           Logger.error("Client registration failed by #{inspect(error)}.")
           {error, state}
       end
 
-    {:ok, binary} = Utils.encode(result)
-    :ok = Zenohex.Query.reply(zenoh_query, register_client_key, binary)
+    result = maybe_add_measurements(result, relay_recv_timestamp_from_client)
+    :ok = Utils.zenohex_reply(zenoh_query, register_client_key, result)
 
     {:noreply, state}
   end
@@ -70,5 +78,31 @@ defmodule GiocciRelay.ClientRegistrar do
       end
 
     {:reply, result, state}
+  end
+
+  defp extract(term) do
+    %{
+      client_name: client_name
+    } = term
+
+    {:ok, client_name}
+  rescue
+    MatchError -> {:error, "term_not_expected"}
+  end
+
+  defp maybe_add_measurements(result, relay_recv_timestamp_from_client) do
+    case result do
+      {:ok, %{data: data, measurements: measurements}} ->
+        measurements =
+          Map.merge(measurements, %{
+            relay_recv_timestamp_from_client: relay_recv_timestamp_from_client,
+            relay_send_timestamp_to_client: System.os_time(:microsecond)
+          })
+
+        {:ok, %{data: data, measurements: measurements}}
+
+      result ->
+        result
+    end
   end
 end

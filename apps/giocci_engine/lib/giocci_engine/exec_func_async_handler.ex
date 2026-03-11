@@ -44,25 +44,23 @@ defmodule GiocciEngine.ExecFuncAsyncHandler do
     key_prefix = state.key_prefix
 
     fun = fn ->
-      with {:ok, recv_term} <- Utils.decode(binary),
-           {:ok, {{m, _f, _args} = mfargs, exec_id, client_name}} <- extract(recv_term),
-           :ok <- Utils.validate_module_saved(m),
+      with {:ok, term_from_client} <- Utils.decode(binary),
+           {:ok, {mfargs, exec_id, client_name}} <- extract(term_from_client.data),
+           :ok <- Utils.validate_module_saved(elem(mfargs, 0)),
            {:ok, result} <- Utils.exec_func(mfargs),
            key <- Path.join(key_prefix, "giocci/exec_func_async/engine/#{client_name}") do
         Logger.debug("Exec func async successfully, #{inspect(mfargs)}.")
 
-        result =
-          {:ok,
-           %{
-             mfargs: mfargs,
-             exec_id: exec_id,
-             client_name: client_name,
-             result: result
-           }}
+        term_to_client = %{
+          data: %{
+            exec_id: exec_id,
+            result: result
+          },
+          measurements: term_from_client.measurements
+        }
 
         session_id = GiocciEngine.SessionManager.session_id()
-        {:ok, binary} = Utils.encode(result)
-        :ok = Zenohex.Session.put(session_id, key, binary)
+        :ok = Utils.zenohex_put(session_id, key, term_to_client)
       else
         error ->
           Logger.error("Exec func async failed, #{inspect(error)}.")

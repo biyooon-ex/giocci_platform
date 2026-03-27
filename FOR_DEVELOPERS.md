@@ -85,3 +85,16 @@ mix hex.publish
    - Update version numbers
    - Build and push Docker images: `./bin/build_and_push_app_images.sh all`
    - Publish to Hex: `cd apps/giocci && mix hex.publish`
+
+## Versioning
+
+We will increment the minor version of this package/repository when the following updates are happend.
+
+- Adds a new API to giocci (Client)
+- Bumps minor version for Zenoh/Zenohex
+
+We will increment the patch version of this package/repository when the following updates are happend.
+
+- Bug fixes existing APIs and features
+- Bumps patch version for Zenoh/Zenohex
+- Other necessary corrections

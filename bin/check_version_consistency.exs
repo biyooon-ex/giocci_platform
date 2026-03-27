@@ -41,8 +41,12 @@ defmodule CheckVersions do
         line = String.trim(line)
 
         cond do
-          line == "" -> acc
-          String.starts_with?(line, "#") -> acc
+          line == "" ->
+            acc
+
+          String.starts_with?(line, "#") ->
+            acc
+
           true ->
             case String.split(line, "=", parts: 2) do
               [key, value] ->
@@ -62,6 +66,7 @@ defmodule CheckVersions do
       "ZENOHEX_VERSION",
       "PROJECT_VERSION"
     ]
+
     missing = Enum.reject(required, &Map.has_key?(versions, &1))
 
     if missing != [] do
@@ -76,6 +81,7 @@ defmodule CheckVersions do
     content = File.read!(file)
 
     base_tag = base_elixir_tag(versions)
+
     errors =
       check_match(
         errors,
@@ -87,6 +93,7 @@ defmodule CheckVersions do
       )
 
     zenoh_version = versions["ZENOH_VERSION"]
+
     errors =
       check_match(
         errors,
@@ -217,7 +224,7 @@ defmodule CheckVersions do
 
         case Regex.run(~r/elixir:\s*\"([^\"]+)\"/, content, capture: :all_but_first) do
           [req] -> {acc, [{file, req} | entries]}
-          _ -> {[ "#{file}: elixir requirement not found" | acc ], entries}
+          _ -> {["#{file}: elixir requirement not found" | acc], entries}
         end
       end)
 

@@ -18,7 +18,7 @@ This command automatically detects your environment and runs tests appropriately
 
 ### CI Docker Image
 
-The CI environment uses a Docker image built from the root `Dockerfile` and `docker-compose.yml` for the `zenohd` service.
+The CI environment, which also runs on GitHub Actions, uses a Docker image built from the root `Dockerfile` and `docker-compose.yml` for the `zenohd` service.
 
 To build and push the CI image:
 
@@ -26,7 +26,12 @@ To build and push the CI image:
 ./bin/build_and_push_app_images.sh zenohd
 ```
 
-**Note**: This image is used by GitHub Actions for running tests in CI.
+**Note**: Since this includes features not supported by the default version of `bash` on macOS, follow the steps below.
+
+```bash
+brew install bash
+/opt/homebrew/bin/bash ./bin/build_and_push_app_images.sh zenohd
+```
 
 ## Version Management
 

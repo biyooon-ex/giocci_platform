@@ -26,7 +26,7 @@ To build and push the CI image:
 ./bin/build_and_push_app_images.sh zenohd
 ```
 
-**Note**: Since this includes features not supported by the default version of `bash` on macOS, follow the steps below.
+**Note**: Since this includes features (e.g., `declare -A `) that are not supported by the default version of `bash` (3.2) on macOS, follow the steps below.
 
 ```bash
 brew install bash

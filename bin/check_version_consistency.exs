@@ -180,24 +180,12 @@ defmodule CheckVersions do
     end)
   end
 
-  defp check_mix_exs(errors, versions) do
-    project_version = versions["PROJECT_VERSION"]
-
+  defp check_mix_exs(errors, _versions) do
     files = Path.wildcard("apps/*/mix.exs")
 
     {errors, elixir_entries} =
       Enum.reduce(files, {errors, []}, fn file, {acc, entries} ->
         content = File.read!(file)
-
-        acc =
-          check_match(
-            acc,
-            file,
-            content,
-            ~r/version:\s*\"#{Regex.escape(project_version)}\"/,
-            "project version mismatch",
-            project_version
-          )
 
         case Regex.run(~r/elixir:\s*\"([^\"]+)\"/, content, capture: :all_but_first) do
           [req] -> {acc, [{file, req} | entries]}

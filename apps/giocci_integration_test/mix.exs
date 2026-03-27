@@ -1,7 +1,7 @@
 defmodule GiocciIntegrationTest.MixProject do
   use Mix.Project
 
-  @versions_path Path.join(__DIR__, "VERSIONS")
+  @versions_path Path.join([__DIR__, "../..", "VERSIONS"])
   @version (if File.exists?(@versions_path) do
               @versions_path
               |> File.read!()

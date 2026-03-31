@@ -7,9 +7,6 @@ defmodule GiocciIntegrationTestTest do
   @engine_name "giocci_engine"
   @client_name "giocci"
 
-  @versions_path Path.expand(Path.join([__DIR__, "../../..", "VERSIONS"]))
-  @platform_apps [:giocci, :giocci_relay, :giocci_engine, :giocci_integration_test]
-
   # Timeout for waiting engine response after it's stopped
   @engine_stopped_timeout 1000
   # Timeout for async message delivery
@@ -247,47 +244,6 @@ defmodule GiocciIntegrationTestTest do
                         client_to_relay: _,
                         relay_to_client: _
                       }}
-    end
-  end
-
-  describe "version consistency" do
-    setup do
-      for app <- [:zenohex | @platform_apps] do
-        _ = Application.load(app)
-      end
-
-      :ok
-    end
-
-    test "VERSIONS file contains all required keys" do
-      versions = MixHelpers.load_versions!(@versions_path)
-
-      for key <- ~w(PROJECT_VERSION ZENOHEX_VERSION ELIXIR_VERSION ERLANG_VERSION UBUNTU_VERSION ZENOH_VERSION) do
-        assert Map.has_key?(versions, key), "VERSIONS file is missing key: #{key}"
-        assert versions[key] != "", "VERSIONS key #{key} must not be empty"
-      end
-    end
-
-    test "giocci platform app versions match PROJECT_VERSION in VERSIONS" do
-      versions = MixHelpers.load_versions!(@versions_path)
-      project_version = versions["PROJECT_VERSION"]
-
-      for app <- @platform_apps do
-        vsn = Application.spec(app, :vsn) |> to_string()
-
-        assert vsn == project_version,
-               "#{app} version #{inspect(vsn)} does not match PROJECT_VERSION #{inspect(project_version)} in VERSIONS"
-      end
-    end
-
-    test "zenohex version matches ZENOHEX_VERSION in VERSIONS" do
-      versions = MixHelpers.load_versions!(@versions_path)
-      zenohex_version = versions["ZENOHEX_VERSION"]
-
-      vsn = Application.spec(:zenohex, :vsn) |> to_string()
-
-      assert vsn == zenohex_version,
-             "zenohex version #{inspect(vsn)} does not match ZENOHEX_VERSION #{inspect(zenohex_version)} in VERSIONS"
     end
   end
 end

@@ -165,6 +165,28 @@ defmodule GiocciIntegrationTestTest do
     end
   end
 
+  describe "ZENOHD_CONNECT_ENDPOINTS" do
+    setup do
+      # Set the env var before starting apps so SessionManager.init/1 picks it up
+      System.put_env("ZENOHD_CONNECT_ENDPOINTS", "tcp/localhost:7447")
+
+      setup_relay_and_client()
+      setup_engine()
+
+      on_exit(fn ->
+        System.delete_env("ZENOHD_CONNECT_ENDPOINTS")
+      end)
+
+      :ok
+    end
+
+    test "connects all components to local zenohd via env var and normal scenario works" do
+      assert :ok == Giocci.register_client(@relay_name)
+      assert :ok == Giocci.save_module(@relay_name, GiocciIntegrationTest)
+      assert 3 == Giocci.exec_func(@relay_name, {GiocciIntegrationTest, :add, [1, 2]})
+    end
+  end
+
   describe "measure_to feature" do
     setup do
       setup_relay_and_client()

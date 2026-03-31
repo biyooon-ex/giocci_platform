@@ -35,16 +35,50 @@ brew install bash
 
 ## Version Management
 
+### VERSIONS file
+
+All version numbers for the project are managed in the `VERSIONS` file at the repository root:
+
+```
+ELIXIR_VERSION=1.19.5
+ERLANG_VERSION=28.3
+UBUNTU_VERSION=noble-20251013
+ZENOH_VERSION=1.8.0
+ZENOHEX_VERSION=0.8.0
+PROJECT_VERSION=0.3.1
+```
+
+This file is the single source of truth and is consumed by:
+- `mix.exs` in each app (for `version:` and the `:zenohex` dependency version)
+- All `Dockerfile`s (as `ARG` default values for base images)
+- All `docker-compose.yml` files (via `${VAR}` interpolation using `--env-file VERSIONS`)
+- `.github/workflows/` (for image tags)
+- `bin/check_version_consistency.exs` (to verify everything stays in sync)
+
 ### Check Version Consistency
 
 Ensure all version numbers are consistent across the project:
 
 ```bash
-./bin/check_version_consistency.exs
+elixir bin/check_version_consistency.exs
 ```
 
-This script verifies that version numbers in `mix.exs`, `VERSIONS`, and other configuration files match.
+This script verifies that version numbers in `VERSIONS`, `mix.exs`, Dockerfiles, and other configuration files all match.
 Also, this script will be executed in CI on GitHub Actions.
+
+### Using VERSIONS with Docker Compose
+
+The `docker-compose.yml` files use `${VAR}` variable substitution. Pass `VERSIONS` as the env-file when running Docker Compose manually:
+
+```bash
+# From the repository root (for zenohd):
+docker compose --env-file VERSIONS up
+
+# From an app directory (e.g., giocci_engine):
+docker compose --env-file ../../VERSIONS up
+```
+
+The `bin/build_and_push_app_images.sh` script handles this automatically.
 
 ## Building and Publishing
 

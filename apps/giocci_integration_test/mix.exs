@@ -1,29 +1,11 @@
 defmodule GiocciIntegrationTest.MixProject do
   use Mix.Project
 
+  Code.require_file("mix_helpers.exs", Path.join(__DIR__, "../../bin"))
+
   @versions_path Path.join([__DIR__, "../..", "VERSIONS"])
-  @version (if File.exists?(@versions_path) do
-              @versions_path
-              |> File.read!()
-              |> String.split("\n")
-              |> Enum.find_value(fn
-                "PROJECT_VERSION=" <> version -> String.trim(version)
-                _ -> false
-              end) || raise("PROJECT_VERSION not found in VERSIONS")
-            else
-              case System.get_env("DEPENDABOT") do
-                "true" ->
-                  # Fallback to dummy version for Dependabot compatibility
-                  IO.warn(
-                    "VERSIONS file not found at #{@versions_path}; using dummy project version for Dependabot environment"
-                  )
-
-                  "0.1.0-dependabot"
-
-                _ ->
-                  raise("VERSIONS file not found at #{@versions_path}")
-              end
-            end)
+  @versions MixHelpers.load_versions!(@versions_path)
+  @version @versions["PROJECT_VERSION"] || raise("PROJECT_VERSION not found in VERSIONS")
 
   def project do
     [

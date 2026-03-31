@@ -14,14 +14,17 @@ ENV ERL_AFLAGS="+JMsingle true"
 
 RUN mix local.hex --force && mix local.rebar --force
 
+# Copy VERSIONS so mix.exs can read the project version
+COPY VERSIONS /VERSIONS
+
 # Copy dependency files first for better caching
-COPY mix.exs mix.lock ./
-COPY config ./config
+COPY apps/giocci_relay/mix.exs apps/giocci_relay/mix.lock ./
+COPY apps/giocci_relay/config ./config
 RUN mix deps.get --only prod
 RUN mix deps.compile
 
 # Copy application source
-COPY lib ./lib
+COPY apps/giocci_relay/lib ./lib
 RUN mix compile
 RUN mix release giocci_relay
 

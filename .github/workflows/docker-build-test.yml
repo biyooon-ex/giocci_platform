@@ -1,0 +1,33 @@
+name: Docker Build Test
+
+on:
+  push:
+    paths:
+      - "VERSIONS"
+      - "Dockerfile"
+      - "docker-compose.yml"
+      - "apps/*/Dockerfile"
+      - "apps/*/docker-compose.yml"
+  pull_request:
+    paths:
+      - "VERSIONS"
+      - "Dockerfile"
+      - "docker-compose.yml"
+      - "apps/*/Dockerfile"
+      - "apps/*/docker-compose.yml"
+
+jobs:
+  build_test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        app: [zenohd, giocci, giocci_engine, giocci_relay]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build test for ${{ matrix.app }} image
+        run: |
+          ./bin/build_and_push_app_images.sh --dry-run ${{ matrix.app }}

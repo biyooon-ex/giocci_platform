@@ -2,8 +2,8 @@ services:
   giocci_engine:
     image: ghcr.io/biyooon-ex/giocci_platform/giocci_engine:0.3.1
     build:
-      context: ./
-      dockerfile: ./Dockerfile
+      context: ../../
+      dockerfile: ./apps/giocci_engine/Dockerfile
       platforms:
         - "linux/amd64"
         - "linux/arm64"

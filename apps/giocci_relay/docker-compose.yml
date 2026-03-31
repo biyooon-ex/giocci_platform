@@ -1,16 +1,12 @@
 services:
   giocci_relay:
-    image: ghcr.io/biyooon-ex/giocci_platform/giocci_relay:${PROJECT_VERSION}
+    image: ghcr.io/biyooon-ex/giocci_platform/giocci_relay:0.3.1
     build:
       context: ./
       dockerfile: ./Dockerfile
       platforms:
         - "linux/amd64"
         - "linux/arm64"
-      args:
-        ELIXIR_VERSION: ${ELIXIR_VERSION}
-        ERLANG_VERSION: ${ERLANG_VERSION}
-        UBUNTU_VERSION: ${UBUNTU_VERSION}
     volumes:
       - ./config/giocci_relay.exs:/app/giocci_relay.exs:ro
       - ./config/zenoh.json5:/app/zenoh.json5:ro

@@ -5,7 +5,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /app
+WORKDIR /build
 
 ENV MIX_ENV=prod
 ENV LANG=C.UTF-8
@@ -14,14 +14,17 @@ ENV ERL_AFLAGS="+JMsingle true"
 
 RUN mix local.hex --force && mix local.rebar --force
 
-# Copy dependency files first for better caching
-COPY mix.exs mix.lock ./
-COPY config ./config
+# Copy VERSIONS to the repo-root equivalent so mix.exs can find it via ../../VERSIONS
+COPY VERSIONS ./
+COPY apps/giocci/mix.exs apps/giocci/mix.lock apps/giocci/
+COPY apps/giocci/config apps/giocci/config
+
+WORKDIR /build/apps/giocci
 RUN mix deps.get --only prod
 RUN mix deps.compile
 
 # Copy application source
-COPY lib ./lib
+COPY apps/giocci/lib lib/
 RUN mix compile
 RUN mix release giocci
 
@@ -39,7 +42,7 @@ ENV MIX_ENV=prod
 ENV LANG=C.UTF-8
 
 # Copy release from builder
-COPY --from=builder --chown=giocci:giocci /app/_build/prod/rel/giocci ./
+COPY --from=builder --chown=giocci:giocci /build/apps/giocci/_build/prod/rel/giocci ./
 
 # Use ENTRYPOINT and CMD for flexibility
 ENTRYPOINT ["/app/bin/giocci"]

@@ -1,0 +1,28 @@
+# Version control
+.git
+.gitignore
+
+# Elixir/Mix build artifacts and dependencies
+_build
+deps
+apps/*/_build
+apps/*/deps
+
+# Test coverage
+cover
+
+# ExDoc generated docs
+doc
+
+# VM crash dumps
+erl_crash.dump
+
+# Mix archives
+*.ez
+
+# Temporary files
+tmp
+
+# Docker files (not needed inside the image)
+docker-compose.yml
+apps/*/docker-compose.yml

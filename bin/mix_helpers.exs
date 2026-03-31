@@ -14,8 +14,12 @@ defmodule MixHelpers do
         line = String.trim(line)
 
         cond do
-          line == "" -> acc
-          String.starts_with?(line, "#") -> acc
+          line == "" ->
+            acc
+
+          String.starts_with?(line, "#") ->
+            acc
+
           true ->
             case String.split(line, "=", parts: 2) do
               [key, value] -> Map.put(acc, String.trim(key), String.trim(value))

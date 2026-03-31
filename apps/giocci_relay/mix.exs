@@ -24,6 +24,28 @@ defmodule GiocciRelay.MixProject do
                   raise("VERSIONS file not found at #{@versions_path}")
               end
             end)
+  @zenohex_version (if File.exists?(@versions_path) do
+                      @versions_path
+                      |> File.read!()
+                      |> String.split("\n")
+                      |> Enum.find_value(fn
+                        "ZENOHEX_VERSION=" <> version -> String.trim(version)
+                        _ -> false
+                      end) || raise("ZENOHEX_VERSION not found in VERSIONS")
+                    else
+                      case System.get_env("GITHUB_ACTIONS") do
+                        true ->
+                          # Fallback to dummy version for Dependabot compatibility
+                          IO.warn(
+                            "VERSIONS file not found at #{@versions_path}; using dummy zenohex version for GitHub Actions environment"
+                          )
+
+                          "0.0.0-dependabot"
+
+                        _ ->
+                          raise("VERSIONS file not found at #{@versions_path}")
+                      end
+                    end)
 
   def project do
     [
@@ -52,7 +74,7 @@ defmodule GiocciRelay.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:zenohex, "== 0.8.0"}
+      {:zenohex, "== #{@zenohex_version}"}
     ]
   end
 

@@ -26,7 +26,7 @@ To build and push the CI image:
 ./bin/build_and_push_app_images.sh zenohd
 ```
 
-**Note**: Since this includes features (e.g., `declare -A`) that are not supported by the default version of `bash` (3.2) on macOS, follow the steps below.
+**Note**: Since this includes features not supported by the default version of `bash` on macOS, follow the steps below.
 
 ```bash
 brew install bash
@@ -34,6 +34,31 @@ brew install bash
 ```
 
 ## Version Management
+
+### Single Source of Truth: VERSIONS file
+
+All version numbers are managed in the [`VERSIONS`](./VERSIONS) file at the project root:
+
+- `ELIXIR_VERSION` / `ERLANG_VERSION` / `UBUNTU_VERSION` — used as `ARG` defaults in all Dockerfiles and as build args in docker-compose files
+- `ZENOH_VERSION` — used as `ARG` in the root Dockerfile and image tags
+- `ZENOHEX_VERSION` — used directly in `apps/giocci_engine/mix.exs` and `apps/giocci_relay/mix.exs`
+- `PROJECT_VERSION` — used in root `mix.exs`, `apps/giocci_engine/mix.exs`, `apps/giocci_relay/mix.exs`, and `apps/giocci_integration_test/mix.exs`
+
+> **Note**: `apps/giocci/mix.exs` still has hardcoded versions for hex.pm compatibility. Update it alongside `VERSIONS` when releasing.
+
+### Running Docker Compose with VERSIONS
+
+The docker-compose files use `${VAR}` variable substitution. Pass `VERSIONS` as the env file:
+
+```bash
+# From the project root (for zenohd):
+docker compose --env-file VERSIONS up
+
+# From an app directory (e.g., for giocci):
+docker compose --env-file ../../VERSIONS up
+```
+
+The `./bin/build_and_push_app_images.sh` script handles this automatically.
 
 ### Check Version Consistency
 
@@ -43,7 +68,7 @@ Ensure all version numbers are consistent across the project:
 ./bin/check_version_consistency.exs
 ```
 
-This script verifies that version numbers in `mix.exs`, `VERSIONS`, and other configuration files match.
+This script verifies that version numbers in `mix.exs`, `VERSIONS`, Dockerfiles, docker-compose files, and other configuration files are consistent.
 Also, this script will be executed in CI on GitHub Actions.
 
 ## Building and Publishing
@@ -63,9 +88,9 @@ This script:
 
 ### Publish to Hex
 
-When creating a new tag or release, `apps/giocci` (the client API library) is automatically published to Hex.pm as a Hex package by `./github/workflows/publish2hex.yml`.
+When creating a new tag or release, `apps/giocci` (the client API library) is automatically published to Hex.pm as a Hex package by `.github/workflows/publish2hex.yml`.
 
-If a issue occurs and we need to run this manually, proceed as follows to publish the giocci package to Hex.pm from the local:
+If an issue occurs and we need to run this manually, proceed as follows to publish the giocci package to Hex.pm from the local:
 
 ```bash
 cd apps/giocci
@@ -85,7 +110,9 @@ mix hex.publish
 4. Commit and push changes
 5. CI will automatically run tests
 6. For releases:
-   - Update version numbers
+   - Update `VERSIONS` (all version numbers are managed there)
+   - Also update `apps/giocci/mix.exs` (hardcoded for hex.pm compatibility)
+   - Also update `.github/workflows/ci.yml` zenohd image tag if `ZENOH_VERSION` changed
    - Build and push Docker images: `./bin/build_and_push_app_images.sh all`
    - Publish to Hex: `cd apps/giocci && mix hex.publish`
 

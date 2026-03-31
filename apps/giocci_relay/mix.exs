@@ -34,16 +34,16 @@ defmodule GiocciRelay.MixProject do
                       end) || raise("ZENOHEX_VERSION not found in VERSIONS")
                     else
                       case System.get_env("GITHUB_ACTIONS") do
-                        true ->
+                        nil ->
+                          raise("VERSIONS file not found at #{@versions_path}")
+
+                        _ ->
                           # Fallback to dummy version for Dependabot compatibility
                           IO.warn(
                             "VERSIONS file not found at #{@versions_path}; using dummy zenohex version for GitHub Actions environment"
                           )
 
                           "0.0.0-dependabot"
-
-                        _ ->
-                          raise("VERSIONS file not found at #{@versions_path}")
                       end
                     end)
 

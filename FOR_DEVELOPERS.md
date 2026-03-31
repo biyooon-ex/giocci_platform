@@ -44,6 +44,7 @@ Ensure all version numbers are consistent across the project:
 ```
 
 This script verifies that version numbers in `mix.exs`, `VERSIONS`, and other configuration files match.
+Also, this script will be executed in CI on GitHub Actions.
 
 ## Building and Publishing
 
@@ -62,7 +63,9 @@ This script:
 
 ### Publish to Hex
 
-Publish the giocci package to Hex.pm:
+When creating a new tag or release, `apps/giocci` (the client API library) is automatically published to Hex.pm as a Hex package by `./github/workflows/publish2hex.yml`.
+
+If a issue occurs and we need to run this manually, proceed as follows to publish the giocci package to Hex.pm from the local:
 
 ```bash
 cd apps/giocci

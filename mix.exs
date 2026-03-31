@@ -11,8 +11,18 @@ defmodule GiocciPlatform.MixProject do
                 _ -> false
               end) || raise("PROJECT_VERSION not found in VERSIONS")
             else
-              # Fallback to dummy version for Dependabot compatibility
-              "0.1.0-dependabot"
+              case System.get_env("GITHUB_ACTIONS") do
+                true ->
+                  # Fallback to dummy version for Dependabot compatibility
+                  IO.warn(
+                    "VERSIONS file not found at #{@versions_path}; using dummy project version for GitHub Actions environment"
+                  )
+
+                  "0.1.0-dependabot"
+
+                _ ->
+                  raise("VERSIONS file not found at #{@versions_path}")
+              end
             end)
 
   def project do

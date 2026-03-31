@@ -52,7 +52,7 @@ defmodule Giocci.MixProject do
   end
 
   defp description() do
-    "Client library for GiocciPlatform (computational resource permeating wide-area distributed system towards the B5G era)"
+    "Client library for GiocciPlatform (resource-permeating computing platform for wide-area distributed systems)"
   end
 
   defp package() do

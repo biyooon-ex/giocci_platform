@@ -1,0 +1,51 @@
+name: publish2hex
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  publish2hex:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    container:
+      image: ghcr.io/biyooon-ex/giocci_platform/zenohd:1.8.0
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache deps and build
+        uses: actions/cache@v4
+        with:
+          path: |
+            deps
+            _build
+          key: ${{ runner.os }}--${{ hashFiles('.tool-versions') }}-${{ hashFiles('**/mix.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ hashFiles('.tool-versions') }}-
+            ${{ runner.os }}-mix-
+
+      - name: Prepare mix
+        run: |
+          mix local.hex --force
+          mix local.rebar --force
+
+      - name: Install dependencies
+        run: mix deps.get
+
+      - name: Check version consistency
+        run: elixir bin/check_version_consistency.exs
+
+      - name: Run tests
+        run: |
+          mix test
+
+      - name: Publish to Hex.pm
+        shell: bash
+        run: |
+          cd apps/giocci
+          mix hex.publish --yes
+        env:
+          HEX_API_KEY: ${{ secrets.HEX_API_KEY }}

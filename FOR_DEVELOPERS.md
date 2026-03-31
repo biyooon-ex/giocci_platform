@@ -94,7 +94,8 @@ mix hex.publish
 We will increment the minor version of this package/repository when the following updates are happend.
 
 - Adds a new API to giocci (Client)
-- Bumps minor version for Zenoh/Zenohex
+- Bumps major/minor version for Zenoh/Zenohex
+- Changes in usage affecting users and operators
 
 We will increment the patch version of this package/repository when the following updates are happend.
 

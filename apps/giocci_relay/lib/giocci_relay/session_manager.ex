@@ -27,6 +27,16 @@ defmodule GiocciRelay.SessionManager do
           |> File.read!()
       end
 
+    zenoh_config =
+      case System.get_env("ZENOHD_CONNECT_ENDPOINTS") do
+        nil ->
+          zenoh_config
+
+        endpoints_str ->
+          endpoints = endpoints_str |> String.split(",", trim: true) |> Enum.map(&String.trim/1)
+          Zenohex.Config.update_in(zenoh_config, ["connect", "endpoints"], fn _ -> endpoints end)
+      end
+
     {:ok, session_id} = Zenohex.Session.open(zenoh_config)
 
     {:ok,

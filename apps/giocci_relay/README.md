@@ -14,6 +14,7 @@ GiocciRelay is a relay component for the GiocciPlatform that forwards messages b
 2. Edit `config/zenoh.json5` to configure Zenoh connection:
    - This file is copied from [the official Zenoh repository](https://github.com/eclipse-zenoh/zenoh/blob/main/DEFAULT_CONFIG.json5) and modifiled for Giocci (check `MODIFIED_FOR_GIOCCI` label in the file).
    - Set `connect.endpoints` to your Zenohd server address (e.g., `["tcp/192.168.1.100:7447"]`)
+   - Alternatively, set the `ZENOHD_CONNECT_ENDPOINTS` environment variable (e.g., `ZENOHD_CONNECT_ENDPOINTS=tcp/192.168.1.100:7447`) to avoid storing the IP address in the config file
 
 3. Edit `config/giocci_relay.exs` to configure the relay:
    - Set `relay_name` to identify this relay instance (e.g., `"my_relay"`)
@@ -59,3 +60,7 @@ docker compose up -d giocci_relay
 ### config/zenoh.json5
 
 See Zenoh [DEFAULT_CONFIG.json5](https://github.com/eclipse-zenoh/zenoh/blob/1.7.1/DEFAULT_CONFIG.json5) for detailed options.
+
+### Environment Variables
+
+- `ZENOHD_CONNECT_ENDPOINTS` (optional): Comma-separated list of Zenoh endpoints to connect to (e.g., `"tcp/192.168.1.100:7447"` or `"tcp/192.168.1.100:7447,tcp/192.168.1.101:7447"`). When set, this overrides the `connect.endpoints` value in `zenoh.json5`. This is useful when managing your configuration with version control, as it avoids storing IP addresses in tracked files.

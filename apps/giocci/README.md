@@ -31,6 +31,10 @@ config :giocci,
 - `client_name` (required): Unique name to identify this client instance
 - `key_prefix` (optional): Prefix prepended to all Zenoh key expressions (default: `""`)
 
+### Environment Variables
+
+- `ZENOHD_CONNECT_ENDPOINTS` (optional): Comma-separated list of Zenoh endpoints to connect to (e.g., `"tcp/192.168.1.100:7447"` or `"tcp/192.168.1.100:7447,tcp/192.168.1.101:7447"`). When set, this overrides the `connect.endpoints` value in `zenoh.json5`. This is useful when managing your configuration with version control, as it avoids storing IP addresses in tracked files.
+
 ## Usage
 
 ### 1. Register Client
@@ -127,6 +131,7 @@ The Docker environment is provided for troubleshooting network connectivity issu
 2. Edit `config/zenoh.json5` to configure Zenoh connection:
    - This file is copied from [the official Zenoh repository](https://github.com/eclipse-zenoh/zenoh/blob/main/DEFAULT_CONFIG.json5) and modifiled for Giocci (check `MODIFIED_FOR_GIOCCI` label in the file).
    - Set `connect.endpoints` to your Zenohd server address (e.g., `["tcp/192.168.1.100:7447"]`)
+   - Alternatively, set the `ZENOHD_CONNECT_ENDPOINTS` environment variable (e.g., `ZENOHD_CONNECT_ENDPOINTS=tcp/192.168.1.100:7447`) to avoid storing the IP address in the config file
 
 3. Edit `config/giocci.exs` to configure the client:
    - Set `client_name` to identify this client instance

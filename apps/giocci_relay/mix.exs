@@ -1,10 +1,30 @@
 defmodule GiocciRelay.MixProject do
   use Mix.Project
 
+  @versions_path Path.join([__DIR__, "..", "..", "VERSIONS"])
+  @versions @versions_path
+            |> File.read!()
+            |> String.split("\n")
+            |> Enum.reduce(%{}, fn line, acc ->
+              line = String.trim(line)
+
+              cond do
+                line == "" -> acc
+                String.starts_with?(line, "#") -> acc
+                true ->
+                  case String.split(line, "=", parts: 2) do
+                    [k, v] -> Map.put(acc, String.trim(k), String.trim(v))
+                    _ -> acc
+                  end
+              end
+            end)
+  @version Map.fetch!(@versions, "PROJECT_VERSION")
+  @zenohex_version Map.fetch!(@versions, "ZENOHEX_VERSION")
+
   def project do
     [
       app: :giocci_relay,
-      version: "0.3.1",
+      version: @version,
       build_path: "./_build",
       config_path: "./config/config.exs",
       deps_path: "./deps",
@@ -28,7 +48,7 @@ defmodule GiocciRelay.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:zenohex, "== 0.8.0"}
+      {:zenohex, "== #{@zenohex_version}"}
     ]
   end
 

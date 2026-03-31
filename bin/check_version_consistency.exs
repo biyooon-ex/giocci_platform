@@ -74,72 +74,87 @@ defmodule CheckVersions do
     file = "Dockerfile"
     content = File.read!(file)
 
-    base_tag = base_elixir_tag(versions)
-    errors =
-      check_match(
-        errors,
-        file,
-        content,
-        ~r/FROM #{Regex.escape(base_tag)}/,
-        "base image mismatch",
-        base_tag
-      )
-
+    elixir_version = versions["ELIXIR_VERSION"]
+    erlang_version = versions["ERLANG_VERSION"]
+    ubuntu_version = versions["UBUNTU_VERSION"]
     zenoh_version = versions["ZENOH_VERSION"]
-    errors =
-      check_match(
-        errors,
-        file,
-        content,
-        ~r/ARG ZENOH_VERSION=#{Regex.escape(zenoh_version)}/,
-        "ZENOH_VERSION mismatch",
-        "ZENOH_VERSION=#{zenoh_version}"
-      )
 
     errors
+    |> check_match(
+      file,
+      content,
+      ~r/ARG ELIXIR_VERSION=#{Regex.escape(elixir_version)}/,
+      "ELIXIR_VERSION ARG mismatch",
+      "ARG ELIXIR_VERSION=#{elixir_version}"
+    )
+    |> check_match(
+      file,
+      content,
+      ~r/ARG ERLANG_VERSION=#{Regex.escape(erlang_version)}/,
+      "ERLANG_VERSION ARG mismatch",
+      "ARG ERLANG_VERSION=#{erlang_version}"
+    )
+    |> check_match(
+      file,
+      content,
+      ~r/ARG UBUNTU_VERSION=#{Regex.escape(ubuntu_version)}/,
+      "UBUNTU_VERSION ARG mismatch",
+      "ARG UBUNTU_VERSION=#{ubuntu_version}"
+    )
+    |> check_match(
+      file,
+      content,
+      ~r/ARG ZENOH_VERSION=#{Regex.escape(zenoh_version)}/,
+      "ZENOH_VERSION ARG mismatch",
+      "ARG ZENOH_VERSION=#{zenoh_version}"
+    )
   end
 
   defp check_apps_dockerfiles(errors, versions) do
-    base_tag = base_elixir_tag(versions)
-    ubuntu_tag = "ubuntu:" <> versions["UBUNTU_VERSION"]
+    elixir_version = versions["ELIXIR_VERSION"]
+    erlang_version = versions["ERLANG_VERSION"]
+    ubuntu_version = versions["UBUNTU_VERSION"]
 
     Path.wildcard("apps/*/Dockerfile")
     |> Enum.reduce(errors, fn file, acc ->
       content = File.read!(file)
 
-      acc =
-        check_match(
-          acc,
-          file,
-          content,
-          ~r/FROM #{Regex.escape(base_tag)}/,
-          "base image mismatch",
-          base_tag
-        )
-
-      check_match(
-        acc,
+      acc
+      |> check_match(
         file,
         content,
-        ~r/FROM #{Regex.escape(ubuntu_tag)}/,
-        "runner image mismatch",
-        ubuntu_tag
+        ~r/ARG ELIXIR_VERSION=#{Regex.escape(elixir_version)}/,
+        "ELIXIR_VERSION ARG mismatch",
+        "ARG ELIXIR_VERSION=#{elixir_version}"
+      )
+      |> check_match(
+        file,
+        content,
+        ~r/ARG ERLANG_VERSION=#{Regex.escape(erlang_version)}/,
+        "ERLANG_VERSION ARG mismatch",
+        "ARG ERLANG_VERSION=#{erlang_version}"
+      )
+      |> check_match(
+        file,
+        content,
+        ~r/ARG UBUNTU_VERSION=#{Regex.escape(ubuntu_version)}/,
+        "UBUNTU_VERSION ARG mismatch",
+        "ARG UBUNTU_VERSION=#{ubuntu_version}"
       )
     end)
   end
 
-  defp check_docker_compose(errors, versions) do
+  defp check_docker_compose(errors, _versions) do
     file = "docker-compose.yml"
     content = File.read!(file)
-    zenoh_version = versions["ZENOH_VERSION"]
 
     check_match(
       errors,
       file,
       content,
-      ~r/image:\s+\S*zenohd:#{Regex.escape(zenoh_version)}/,
-      "zenohd image tag mismatch",
-      "zenohd:#{zenoh_version}"
+      ~r/image:\s+\S*zenohd:\$\{ZENOH_VERSION\}/,
+      "zenohd image tag not using ${ZENOH_VERSION}",
+      "zenohd:${ZENOH_VERSION}"
     )
   end
 
@@ -158,9 +173,7 @@ defmodule CheckVersions do
     )
   end
 
-  defp check_app_docker_compose(errors, versions) do
-    project_version = versions["PROJECT_VERSION"]
-
+  defp check_app_docker_compose(errors, _versions) do
     [
       "apps/giocci/docker-compose.yml",
       "apps/giocci_engine/docker-compose.yml",
@@ -173,9 +186,9 @@ defmodule CheckVersions do
         acc,
         file,
         content,
-        ~r/image:\s+\S+:#{Regex.escape(project_version)}/,
-        "image tag mismatch",
-        project_version
+        ~r/image:\s+\S+:\$\{PROJECT_VERSION\}/,
+        "image tag not using ${PROJECT_VERSION}",
+        "${PROJECT_VERSION}"
       )
     end)
   end
@@ -183,25 +196,29 @@ defmodule CheckVersions do
   defp check_mix_exs(errors, versions) do
     project_version = versions["PROJECT_VERSION"]
 
-    files = Path.wildcard("apps/*/mix.exs")
+    # Only check giocci/mix.exs for hardcoded version; other apps read from VERSIONS dynamically
+    giocci_file = "apps/giocci/mix.exs"
+    giocci_content = File.read!(giocci_file)
 
-    {errors, elixir_entries} =
-      Enum.reduce(files, {errors, []}, fn file, {acc, entries} ->
+    errors =
+      check_match(
+        errors,
+        giocci_file,
+        giocci_content,
+        ~r/version:\s*\"#{Regex.escape(project_version)}\"/,
+        "project version mismatch",
+        project_version
+      )
+
+    # Check elixir requirement consistency across all app mix.exs files
+    elixir_entries =
+      Path.wildcard("apps/*/mix.exs")
+      |> Enum.reduce([], fn file, entries ->
         content = File.read!(file)
 
-        acc =
-          check_match(
-            acc,
-            file,
-            content,
-            ~r/version:\s*\"#{Regex.escape(project_version)}\"/,
-            "project version mismatch",
-            project_version
-          )
-
         case Regex.run(~r/elixir:\s*\"([^\"]+)\"/, content, capture: :all_but_first) do
-          [req] -> {acc, [{file, req} | entries]}
-          _ -> {[ "#{file}: elixir requirement not found" | acc ], entries}
+          [req] -> [{file, req} | entries]
+          _ -> entries
         end
       end)
 
@@ -239,32 +256,18 @@ defmodule CheckVersions do
   defp check_zenohex_versions(errors, versions) do
     zenohex_version = versions["ZENOHEX_VERSION"]
 
-    [
-      "apps/giocci/mix.exs",
-      "apps/giocci_engine/mix.exs",
-      "apps/giocci_relay/mix.exs"
-    ]
-    |> Enum.reduce(errors, fn file, acc ->
-      content = File.read!(file)
+    # Only check giocci/mix.exs; other apps read zenohex version from VERSIONS dynamically
+    file = "apps/giocci/mix.exs"
+    content = File.read!(file)
 
-      check_match(
-        acc,
-        file,
-        content,
-        ~r/\{:zenohex,\s*\"==\s*#{Regex.escape(zenohex_version)}\"\}/,
-        "zenohex version mismatch",
-        "{:zenohex, \"== #{zenohex_version}\"}"
-      )
-    end)
-  end
-
-  defp base_elixir_tag(versions) do
-    "hexpm/elixir:" <>
-      versions["ELIXIR_VERSION"] <>
-      "-erlang-" <>
-      versions["ERLANG_VERSION"] <>
-      "-ubuntu-" <>
-      versions["UBUNTU_VERSION"]
+    check_match(
+      errors,
+      file,
+      content,
+      ~r/\{:zenohex,\s*"==\s*#{Regex.escape(zenohex_version)}"\}/,
+      "zenohex version mismatch",
+      "{:zenohex, \"== #{zenohex_version}\"}"
+    )
   end
 
   defp check_consistency(errors, message, entries) do

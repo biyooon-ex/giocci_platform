@@ -10,9 +10,7 @@ defmodule Giocci.SessionManagerTest do
     end
 
     test "parses multiple comma-separated endpoints" do
-      assert SessionManager.parse_env_endpoints(
-               "tcp/192.168.1.100:7447,tcp/192.168.1.101:7447"
-             ) ==
+      assert SessionManager.parse_env_endpoints("tcp/192.168.1.100:7447,tcp/192.168.1.101:7447") ==
                ["tcp/192.168.1.100:7447", "tcp/192.168.1.101:7447"]
     end
 

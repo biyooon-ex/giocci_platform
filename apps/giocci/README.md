@@ -16,6 +16,8 @@ end
 
 ## Configuration
 
+### config/config.exs
+
 Configure Giocci in your `config/config.exs`:
 
 ```elixir
@@ -25,11 +27,9 @@ config :giocci,
   key_prefix: ""                                  # Optional key prefix for Zenoh keys
 ```
 
-### Configuration Options
+### zenoh.json5
 
-- `zenoh_config_file_path` (required): Path to the Zenoh configuration file
-- `client_name` (required): Unique name to identify this client instance
-- `key_prefix` (optional): Prefix prepended to all Zenoh key expressions (default: `""`)
+See Zenoh [DEFAULT_CONFIG.json5](https://github.com/eclipse-zenoh/zenoh/blob/1.8.0/DEFAULT_CONFIG.json5) for detailed options.
 
 ### Environment Variables
 

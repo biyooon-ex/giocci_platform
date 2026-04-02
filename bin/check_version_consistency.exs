@@ -15,7 +15,6 @@ defmodule CheckVersions do
       |> check_publish2hex_yml(versions)
       |> check_mix_exs(versions)
       |> check_tool_versions(versions)
-      |> check_zenohex_versions(versions)
       |> check_readme_project_versions(versions)
       |> check_readme_zenoh_versions(versions)
 
@@ -82,18 +81,9 @@ defmodule CheckVersions do
     file = "Dockerfile"
     content = File.read!(file)
 
-    base_tag = base_elixir_tag(versions)
-
-    errors =
-      check_match(
-        errors,
-        file,
-        content,
-        ~r/FROM #{Regex.escape(base_tag)}/,
-        "base image mismatch",
-        base_tag
-      )
-
+    elixir_version = versions["ELIXIR_VERSION"]
+    erlang_version = versions["ERLANG_VERSION"]
+    ubuntu_version = versions["UBUNTU_VERSION"]
     zenoh_version = versions["ZENOH_VERSION"]
 
     errors =
@@ -101,17 +91,58 @@ defmodule CheckVersions do
         errors,
         file,
         content,
+        ~r/ARG ELIXIR_VERSION=#{Regex.escape(elixir_version)}/,
+        "ELIXIR_VERSION ARG default mismatch",
+        "ELIXIR_VERSION=#{elixir_version}"
+      )
+
+    errors =
+      check_match(
+        errors,
+        file,
+        content,
+        ~r/ARG ERLANG_VERSION=#{Regex.escape(erlang_version)}/,
+        "ERLANG_VERSION ARG default mismatch",
+        "ERLANG_VERSION=#{erlang_version}"
+      )
+
+    errors =
+      check_match(
+        errors,
+        file,
+        content,
+        ~r/ARG UBUNTU_VERSION=#{Regex.escape(ubuntu_version)}/,
+        "UBUNTU_VERSION ARG default mismatch",
+        "UBUNTU_VERSION=#{ubuntu_version}"
+      )
+
+    errors =
+      check_match(
+        errors,
+        file,
+        content,
         ~r/ARG ZENOH_VERSION=#{Regex.escape(zenoh_version)}/,
-        "ZENOH_VERSION mismatch",
+        "ZENOH_VERSION ARG default mismatch",
         "ZENOH_VERSION=#{zenoh_version}"
+      )
+
+    errors =
+      check_match(
+        errors,
+        file,
+        content,
+        ~r/FROM hexpm\/elixir:\$\{ELIXIR_VERSION\}-erlang-\$\{ERLANG_VERSION\}-ubuntu-\$\{UBUNTU_VERSION\}/,
+        "builder FROM should use ARG variables",
+        "FROM hexpm/elixir:${ELIXIR_VERSION}-erlang-${ERLANG_VERSION}-ubuntu-${UBUNTU_VERSION}"
       )
 
     errors
   end
 
   defp check_apps_dockerfiles(errors, versions) do
-    base_tag = base_elixir_tag(versions)
-    ubuntu_tag = "ubuntu:" <> versions["UBUNTU_VERSION"]
+    elixir_version = versions["ELIXIR_VERSION"]
+    erlang_version = versions["ERLANG_VERSION"]
+    ubuntu_version = versions["UBUNTU_VERSION"]
 
     Path.wildcard("apps/*/Dockerfile")
     |> Enum.reduce(errors, fn file, acc ->
@@ -122,34 +153,63 @@ defmodule CheckVersions do
           acc,
           file,
           content,
-          ~r/FROM #{Regex.escape(base_tag)}/,
-          "base image mismatch",
-          base_tag
+          ~r/ARG ELIXIR_VERSION=#{Regex.escape(elixir_version)}/,
+          "ELIXIR_VERSION ARG default mismatch",
+          "ELIXIR_VERSION=#{elixir_version}"
+        )
+
+      acc =
+        check_match(
+          acc,
+          file,
+          content,
+          ~r/ARG ERLANG_VERSION=#{Regex.escape(erlang_version)}/,
+          "ERLANG_VERSION ARG default mismatch",
+          "ERLANG_VERSION=#{erlang_version}"
+        )
+
+      acc =
+        check_match(
+          acc,
+          file,
+          content,
+          ~r/ARG UBUNTU_VERSION=#{Regex.escape(ubuntu_version)}/,
+          "UBUNTU_VERSION ARG default mismatch",
+          "UBUNTU_VERSION=#{ubuntu_version}"
+        )
+
+      acc =
+        check_match(
+          acc,
+          file,
+          content,
+          ~r/FROM hexpm\/elixir:\$\{ELIXIR_VERSION\}-erlang-\$\{ERLANG_VERSION\}-ubuntu-\$\{UBUNTU_VERSION\}/,
+          "builder FROM should use ARG variables",
+          "FROM hexpm/elixir:${ELIXIR_VERSION}-erlang-${ERLANG_VERSION}-ubuntu-${UBUNTU_VERSION}"
         )
 
       check_match(
         acc,
         file,
         content,
-        ~r/FROM #{Regex.escape(ubuntu_tag)}/,
-        "runner image mismatch",
-        ubuntu_tag
+        ~r/FROM ubuntu:\$\{UBUNTU_VERSION\}/,
+        "runner FROM should use ARG variable",
+        "FROM ubuntu:${UBUNTU_VERSION}"
       )
     end)
   end
 
-  defp check_docker_compose(errors, versions) do
+  defp check_docker_compose(errors, _versions) do
     file = "docker-compose.yml"
     content = File.read!(file)
-    zenoh_version = versions["ZENOH_VERSION"]
 
     check_match(
       errors,
       file,
       content,
-      ~r/image:\s+\S*zenohd:#{Regex.escape(zenoh_version)}/,
-      "zenohd image tag mismatch",
-      "zenohd:#{zenoh_version}"
+      ~r/image:\s+\S*zenohd:\$\{ZENOH_VERSION\}/,
+      "zenohd image should use ${ZENOH_VERSION} variable",
+      "zenohd:${ZENOH_VERSION}"
     )
   end
 
@@ -183,9 +243,7 @@ defmodule CheckVersions do
     )
   end
 
-  defp check_app_docker_compose(errors, versions) do
-    project_version = versions["PROJECT_VERSION"]
-
+  defp check_app_docker_compose(errors, _versions) do
     [
       "apps/giocci/docker-compose.yml",
       "apps/giocci_engine/docker-compose.yml",
@@ -198,9 +256,9 @@ defmodule CheckVersions do
         acc,
         file,
         content,
-        ~r/image:\s+\S+:#{Regex.escape(project_version)}/,
-        "image tag mismatch",
-        project_version
+        ~r/image:\s+\S+:\$\{PROJECT_VERSION\}/,
+        "image tag should use ${PROJECT_VERSION} variable",
+        "${PROJECT_VERSION}"
       )
     end)
   end
@@ -249,28 +307,6 @@ defmodule CheckVersions do
     )
   end
 
-  defp check_zenohex_versions(errors, versions) do
-    zenohex_version = versions["ZENOHEX_VERSION"]
-
-    [
-      "apps/giocci/mix.exs",
-      "apps/giocci_engine/mix.exs",
-      "apps/giocci_relay/mix.exs"
-    ]
-    |> Enum.reduce(errors, fn file, acc ->
-      content = File.read!(file)
-
-      check_match(
-        acc,
-        file,
-        content,
-        ~r/\{:zenohex,\s*\"==\s*#{Regex.escape(zenohex_version)}\"\}/,
-        "zenohex version mismatch",
-        "{:zenohex, \"== #{zenohex_version}\"}"
-      )
-    end)
-  end
-
   defp check_readme_project_versions(errors, versions) do
     project_version = versions["PROJECT_VERSION"]
 
@@ -311,15 +347,6 @@ defmodule CheckVersions do
         "zenoh:#{zenoh_version}}"
       )
     end)
-  end
-
-  defp base_elixir_tag(versions) do
-    "hexpm/elixir:" <>
-      versions["ELIXIR_VERSION"] <>
-      "-erlang-" <>
-      versions["ERLANG_VERSION"] <>
-      "-ubuntu-" <>
-      versions["UBUNTU_VERSION"]
   end
 
   defp check_consistency(errors, message, entries) do

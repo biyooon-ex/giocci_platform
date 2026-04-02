@@ -1,4 +1,7 @@
-FROM hexpm/elixir:1.19.5-erlang-28.3-ubuntu-noble-20251013 AS builder
+ARG ELIXIR_VERSION=1.19.5
+ARG ERLANG_VERSION=28.3
+ARG UBUNTU_VERSION=noble-20251013
+FROM hexpm/elixir:${ELIXIR_VERSION}-erlang-${ERLANG_VERSION}-ubuntu-${UBUNTU_VERSION} AS builder
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -29,7 +32,7 @@ RUN mix compile
 RUN mix release giocci_relay
 
 # Runtime stage
-FROM ubuntu:noble-20251013 AS runner
+FROM ubuntu:${UBUNTU_VERSION} AS runner
 
 # Create non-root user
 RUN groupadd -r giocci_relay && \

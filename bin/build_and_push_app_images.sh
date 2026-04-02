@@ -114,9 +114,9 @@ build_service() {
   local service_name="$2"
   
   if [[ "$DRY_RUN" == "true" ]]; then
-    docker compose -f "$compose_file" build "$service_name"
+    docker compose --env-file "${root_dir}/VERSIONS" -f "$compose_file" build "$service_name"
   else
-    docker compose -f "$compose_file" build --push "$service_name"
+    docker compose --env-file "${root_dir}/VERSIONS" -f "$compose_file" build --push "$service_name"
   fi
 }
 

@@ -5,7 +5,12 @@ services:
       platforms:
         - "linux/amd64"
         - "linux/arm64"
-    image: ghcr.io/biyooon-ex/giocci_platform/zenohd:1.8.0
+      args:
+        ELIXIR_VERSION: ${ELIXIR_VERSION}
+        ERLANG_VERSION: ${ERLANG_VERSION}
+        UBUNTU_VERSION: ${UBUNTU_VERSION}
+        ZENOH_VERSION: ${ZENOH_VERSION}
+    image: ghcr.io/biyooon-ex/giocci_platform/zenohd:${ZENOH_VERSION}
     volumes:
       - .:/app
     ports:

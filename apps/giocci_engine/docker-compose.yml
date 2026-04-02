@@ -10,6 +10,8 @@ services:
     volumes:
       - ./config/giocci_engine.exs:/app/giocci_engine.exs:ro
       - ./config/zenoh.json5:/app/zenoh.json5:ro
+    environment:
+      - ZENOHD_CONNECT_ENDPOINTS
     restart: "always"
     logging:
       driver: "json-file"

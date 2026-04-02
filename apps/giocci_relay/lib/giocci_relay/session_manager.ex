@@ -25,6 +25,26 @@ defmodule GiocciRelay.SessionManager do
         zenoh_config_file_path ->
           zenoh_config_file_path
           |> File.read!()
+          |> Zenohex.Config.from_json5()
+          |> case do
+            {:ok, clean_json} -> clean_json
+            {:error, reason} -> raise "Failed to parse Zenoh config: #{inspect(reason)}"
+          end
+      end
+
+    zenoh_config =
+      case System.get_env("ZENOHD_CONNECT_ENDPOINTS") do
+        nil ->
+          zenoh_config
+
+        endpoints_str ->
+          endpoints =
+            endpoints_str
+            |> String.split(",")
+            |> Enum.map(&String.trim/1)
+            |> Enum.reject(&(&1 == ""))
+
+          Zenohex.Config.update_in(zenoh_config, ["connect", "endpoints"], fn _ -> endpoints end)
       end
 
     {:ok, session_id} = Zenohex.Session.open(zenoh_config)

@@ -165,6 +165,48 @@ defmodule GiocciIntegrationTestTest do
     end
   end
 
+  describe "operation when ZENOHD_CONNECT_ENDPOINTS is set" do
+    setup do
+      on_exit(fn ->
+        System.delete_env("ZENOHD_CONNECT_ENDPOINTS")
+      end)
+
+      :ok
+    end
+
+    test "single endpoint: connects all components and normal scenario works" do
+      System.put_env("ZENOHD_CONNECT_ENDPOINTS", "tcp/localhost:7447")
+      setup_relay_and_client()
+      setup_engine()
+
+      assert :ok == Giocci.register_client(@relay_name)
+      assert :ok == Giocci.save_module(@relay_name, GiocciIntegrationTest)
+      assert 3 == Giocci.exec_func(@relay_name, {GiocciIntegrationTest, :add, [1, 2]})
+    end
+
+    test "multiple comma-separated endpoints with spaces: connects and works" do
+      # Using the same endpoint twice to test the comma-separated parsing while keeping
+      # the test self-contained on a single local machine
+      System.put_env("ZENOHD_CONNECT_ENDPOINTS", "tcp/localhost:7447, tcp/localhost:7447")
+      setup_relay_and_client()
+      setup_engine()
+
+      assert :ok == Giocci.register_client(@relay_name)
+      assert :ok == Giocci.save_module(@relay_name, GiocciIntegrationTest)
+      assert 3 == Giocci.exec_func(@relay_name, {GiocciIntegrationTest, :add, [1, 2]})
+    end
+
+    test "trailing comma with whitespace: whitespace-only segments are ignored" do
+      System.put_env("ZENOHD_CONNECT_ENDPOINTS", "tcp/localhost:7447, ")
+      setup_relay_and_client()
+      setup_engine()
+
+      assert :ok == Giocci.register_client(@relay_name)
+      assert :ok == Giocci.save_module(@relay_name, GiocciIntegrationTest)
+      assert 3 == Giocci.exec_func(@relay_name, {GiocciIntegrationTest, :add, [1, 2]})
+    end
+  end
+
   describe "measure_to feature" do
     setup do
       setup_relay_and_client()

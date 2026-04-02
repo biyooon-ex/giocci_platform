@@ -16,6 +16,7 @@ defmodule CheckVersions do
       |> check_mix_exs(versions)
       |> check_tool_versions(versions)
       |> check_zenohex_versions(versions)
+      |> check_readme_zenoh_versions(versions)
 
     if errors == [] do
       IO.puts("version check: OK")
@@ -265,6 +266,28 @@ defmodule CheckVersions do
         ~r/\{:zenohex,\s*\"==\s*#{Regex.escape(zenohex_version)}\"\}/,
         "zenohex version mismatch",
         "{:zenohex, \"== #{zenohex_version}\"}"
+      )
+    end)
+  end
+
+  defp check_readme_zenoh_versions(errors, versions) do
+    zenoh_version = versions["ZENOH_VERSION"]
+
+    [
+      "apps/giocci/README.md",
+      "apps/giocci_engine/README.md",
+      "apps/giocci_relay/README.md"
+    ]
+    |> Enum.reduce(errors, fn file, acc ->
+      content = File.read!(file)
+
+      check_match(
+        acc,
+        file,
+        content,
+        ~r/github\.com\/eclipse-zenoh\/zenoh\/blob\/#{Regex.escape(zenoh_version)}\/DEFAULT_CONFIG\.json5/,
+        "zenoh version in #{file} mismatch",
+        "zenoh:#{zenoh_version}}"
       )
     end)
   end

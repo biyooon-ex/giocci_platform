@@ -4,7 +4,7 @@
 
 # GiocciPlatform
 
-GiocciPlatform is a computational resource permeating wide-area distributed system towards the B5G era.
+GiocciPlatform is a resource-permeating computing platform for wide-area distributed systems.
 
 ## Overview
 

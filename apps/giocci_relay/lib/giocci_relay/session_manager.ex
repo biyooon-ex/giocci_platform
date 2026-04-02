@@ -34,7 +34,7 @@ defmodule GiocciRelay.SessionManager do
 
     zenoh_config =
       case System.get_env("ZENOHD_CONNECT_ENDPOINTS") do
-        val when val in [nil, ""] ->
+        nil ->
           zenoh_config
 
         endpoints_str ->

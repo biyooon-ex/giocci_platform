@@ -165,7 +165,7 @@ defmodule GiocciIntegrationTestTest do
     end
   end
 
-  describe "ZENOHD_CONNECT_ENDPOINTS" do
+  describe "operation when ZENOHD_CONNECT_ENDPOINTS is set" do
     setup do
       on_exit(fn ->
         System.delete_env("ZENOHD_CONNECT_ENDPOINTS")

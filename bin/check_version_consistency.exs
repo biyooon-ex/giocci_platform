@@ -273,36 +273,22 @@ defmodule CheckVersions do
   defp check_readme_zenoh_versions(errors, versions) do
     zenoh_version = versions["ZENOH_VERSION"]
 
-    Path.wildcard("apps/*/README.md")
+    [
+      "apps/giocci/README.md",
+      "apps/giocci_engine/README.md",
+      "apps/giocci_relay/README.md"
+    ]
     |> Enum.reduce(errors, fn file, acc ->
       content = File.read!(file)
 
-      versions_in_readme =
-        Regex.scan(
-          ~r|eclipse-zenoh/zenoh/blob/([^/\s]+)/DEFAULT_CONFIG\.json5|,
-          content,
-          capture: :all_but_first
-        )
-        |> Enum.flat_map(& &1)
-        |> Enum.reject(&(&1 == "main"))
-
-      case versions_in_readme do
-        [] ->
-          acc
-
-        found_versions ->
-          if Enum.all?(found_versions, &(&1 == zenoh_version)) do
-            acc
-          else
-            mismatched =
-              found_versions
-              |> Enum.reject(&(&1 == zenoh_version))
-              |> Enum.uniq()
-              |> Enum.join(", ")
-
-            ["#{file}: ZENOH_VERSION mismatch in README (found: #{mismatched}, expected: #{zenoh_version})" | acc]
-          end
-      end
+      check_match(
+        acc,
+        file,
+        content,
+        ~r/github\.com\/eclipse-zenoh\/zenoh\/blob\/#{Regex.escape(zenoh_version)}\/DEFAULT_CONFIG\.json5/,
+        "zenoh version in #{file} mismatch",
+        "zenoh:#{zenoh_version}}"
+      )
     end)
   end
 

@@ -34,11 +34,11 @@ defmodule GiocciRelay.SessionManager do
 
     zenoh_config =
       case System.get_env("ZENOHD_CONNECT_ENDPOINTS") do
-        nil ->
+        val when val in [nil, ""] ->
           zenoh_config
 
         endpoints_str ->
-          endpoints = parse_env_endpoints(endpoints_str)
+          endpoints = endpoints_str |> String.split(",", trim: true) |> Enum.map(&String.trim/1)
           Zenohex.Config.update_in(zenoh_config, ["connect", "endpoints"], fn _ -> endpoints end)
       end
 
@@ -48,11 +48,6 @@ defmodule GiocciRelay.SessionManager do
      %{
        session_id: session_id
      }}
-  end
-
-  @doc false
-  def parse_env_endpoints(endpoints_str) do
-    endpoints_str |> String.split(",", trim: true) |> Enum.map(&String.trim/1)
   end
 
   def handle_call(:session_id, _from, state) do

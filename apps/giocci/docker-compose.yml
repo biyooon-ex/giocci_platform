@@ -1,6 +1,6 @@
 services:
   giocci:
-    image: ghcr.io/biyooon-ex/giocci_platform/giocci:0.4.0
+    image: ghcr.io/biyooon-ex/giocci_platform/giocci:0.4.1
     build:
       context: ../../
       dockerfile: ./apps/giocci/Dockerfile

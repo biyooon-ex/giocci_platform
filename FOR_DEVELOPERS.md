@@ -46,6 +46,25 @@ Ensure all version numbers are consistent across the project:
 This script verifies that version numbers in `mix.exs`, `VERSIONS`, and other configuration files match.
 Also, this script will be executed in CI on GitHub Actions.
 
+## Versioning Rule
+
+We will increment the minor version of this package/repository when the following updates are happend.
+
+- Adds a new API to giocci (Client)
+- Bumps major/minor version for Zenoh/Zenohex
+- Changes in usage affecting users and operators
+
+We will increment the patch version of this package/repository when the following updates are happend.
+
+- Bug fixes existing APIs and features
+- Bumps patch version for Zenoh/Zenohex
+- Other necessary corrections
+
+### Update version
+
+When updating this project itself or the versions of Zenoh, Elixir, and other dependencies, we must also update the contents of `VERSIONS` file.
+Although there is a copy of this file in `apps/giocci/`, we do not need to edit it since it is automatically copied by mix tasks.
+
 ## Building and Publishing
 
 ### Build and Push Docker Images
@@ -88,17 +107,3 @@ mix hex.publish
    - Update version numbers
    - Build and push Docker images: `./bin/build_and_push_app_images.sh all`
    - Publish to Hex: `cd apps/giocci && mix hex.publish`
-
-## Versioning
-
-We will increment the minor version of this package/repository when the following updates are happend.
-
-- Adds a new API to giocci (Client)
-- Bumps major/minor version for Zenoh/Zenohex
-- Changes in usage affecting users and operators
-
-We will increment the patch version of this package/repository when the following updates are happend.
-
-- Bug fixes existing APIs and features
-- Bumps patch version for Zenoh/Zenohex
-- Other necessary corrections

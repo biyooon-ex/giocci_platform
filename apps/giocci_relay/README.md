@@ -63,4 +63,4 @@ See Zenoh [DEFAULT_CONFIG.json5](https://github.com/eclipse-zenoh/zenoh/blob/1.8
 
 ### Environment Variables
 
-- `ZENOHD_CONNECT_ENDPOINTS` (optional): Comma-separated list of Zenoh endpoints to connect to (e.g., `"tcp/192.168.1.100:7447"` or `"tcp/192.168.1.100:7447,tcp/192.168.1.101:7447"`). When set, this overrides the `connect.endpoints` value in `zenoh.json5` (but note that this will override even if a blank is defined). This is useful when managing your configuration with version control, as it avoids storing IP addresses in tracked files.
+- `ZENOHD_CONNECT_ENDPOINTS` (optional): Comma-separated list of Zenoh endpoints to connect to (e.g., `"tcp/192.168.1.100:7447"` or `"tcp/192.168.1.100:7447,tcp/192.168.1.101:7447"`). When set, this overrides the `connect.endpoints` value in `zenoh.json5` (note that a setting consisting solely of spaces or commas will be ignored since Giocci Relay requires zenohd's endpoints setting to operate). This is useful when managing your configuration with version control, as it avoids storing IP addresses in tracked files.

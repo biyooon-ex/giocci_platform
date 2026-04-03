@@ -205,6 +205,36 @@ defmodule GiocciIntegrationTestTest do
       assert :ok == Giocci.save_module(@relay_name, GiocciIntegrationTest)
       assert 3 == Giocci.exec_func(@relay_name, {GiocciIntegrationTest, :add, [1, 2]})
     end
+
+    test "empty string: does not override connect.endpoints and normal scenario works" do
+      System.put_env("ZENOHD_CONNECT_ENDPOINTS", "")
+      setup_relay_and_client()
+      setup_engine()
+
+      assert :ok == Giocci.register_client(@relay_name)
+      assert :ok == Giocci.save_module(@relay_name, GiocciIntegrationTest)
+      assert 3 == Giocci.exec_func(@relay_name, {GiocciIntegrationTest, :add, [1, 2]})
+    end
+
+    test "whitespace-only: does not override connect.endpoints and normal scenario works" do
+      System.put_env("ZENOHD_CONNECT_ENDPOINTS", "   ")
+      setup_relay_and_client()
+      setup_engine()
+
+      assert :ok == Giocci.register_client(@relay_name)
+      assert :ok == Giocci.save_module(@relay_name, GiocciIntegrationTest)
+      assert 3 == Giocci.exec_func(@relay_name, {GiocciIntegrationTest, :add, [1, 2]})
+    end
+
+    test "commas-only: does not override connect.endpoints and normal scenario works" do
+      System.put_env("ZENOHD_CONNECT_ENDPOINTS", ",,")
+      setup_relay_and_client()
+      setup_engine()
+
+      assert :ok == Giocci.register_client(@relay_name)
+      assert :ok == Giocci.save_module(@relay_name, GiocciIntegrationTest)
+      assert 3 == Giocci.exec_func(@relay_name, {GiocciIntegrationTest, :add, [1, 2]})
+    end
   end
 
   describe "measure_to feature" do

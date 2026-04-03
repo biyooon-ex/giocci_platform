@@ -44,7 +44,15 @@ defmodule GiocciRelay.SessionManager do
             |> Enum.map(&String.trim/1)
             |> Enum.reject(&(&1 == ""))
 
-          Zenohex.Config.update_in(zenoh_config, ["connect", "endpoints"], fn _ -> endpoints end)
+          case endpoints do
+            [] ->
+              zenoh_config
+
+            _ ->
+              Zenohex.Config.update_in(zenoh_config, ["connect", "endpoints"], fn _ ->
+                endpoints
+              end)
+          end
       end
 
     {:ok, session_id} = Zenohex.Session.open(zenoh_config)

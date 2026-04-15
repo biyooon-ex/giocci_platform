@@ -21,8 +21,9 @@ defmodule GiocciEngine.SessionManager do
     zenoh_config =
       case Keyword.get(args, :zenoh_config_file_path) do
         nil ->
-          Zenohex.Config.default()
-          |> Zenohex.Config.update_in(["mode"], fn _ -> "client" end)
+          default_config = Zenohex.Config.default()
+          {:ok, updated_config} = Zenohex.Config.insert_json5(default_config, "mode", "client")
+          updated_config
 
         zenoh_config_file_path ->
           zenoh_config_file_path
@@ -51,9 +52,14 @@ defmodule GiocciEngine.SessionManager do
               zenoh_config
 
             _ ->
-              Zenohex.Config.update_in(zenoh_config, ["connect", "endpoints"], fn _ ->
-                endpoints
-              end)
+              {:ok, updated_config} =
+                Zenohex.Config.insert_json5(
+                  zenoh_config,
+                  "connect/endpoints",
+                  endpoints |> :json.encode() |> IO.iodata_to_binary()
+                )
+
+              updated_config
           end
       end
 

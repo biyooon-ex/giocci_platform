@@ -4,25 +4,3 @@ updates:
     directory: "/"
     schedule:
       interval: "daily"
-  - package-ecosystem: "mix"
-    directory: "/apps/giocci"
-    schedule:
-      interval: "daily"
-    ignore:
-      - dependency-name: "zenohex"
-  - package-ecosystem: "mix"
-    directory: "/apps/giocci_relay"
-    schedule:
-      interval: "daily"
-    ignore:
-      - dependency-name: "zenohex"
-  - package-ecosystem: "mix"
-    directory: "/apps/giocci_engine"
-    schedule:
-      interval: "daily"
-    ignore:
-      - dependency-name: "zenohex"
-  - package-ecosystem: "mix"
-    directory: "/apps/giocci_integration_test"
-    schedule:
-      interval: "daily"

@@ -7,6 +7,7 @@ defmodule CheckVersions do
 
     errors =
       errors
+      |> check_app_versions_file(versions)
       |> check_root_dockerfile(versions)
       |> check_apps_dockerfiles(versions)
       |> check_docker_compose(versions)
@@ -76,6 +77,23 @@ defmodule CheckVersions do
     end
 
     versions
+  end
+
+  defp check_app_versions_file(errors, _versions) do
+    root_file = "VERSIONS"
+    app_file = "apps/giocci/VERSIONS"
+
+    root_content = File.read!(root_file)
+    app_content = File.read!(app_file)
+
+    if root_content == app_content do
+      errors
+    else
+      [
+        "#{app_file}: not copied from #{root_file} (need to run any mix tasks before push)"
+        | errors
+      ]
+    end
   end
 
   defp check_root_dockerfile(errors, versions) do

@@ -27,6 +27,9 @@ jobs:
             ${{ runner.os }}-${{ hashFiles('.tool-versions') }}-
             ${{ runner.os }}-mix-
 
+      - name: Check version consistency
+        run: elixir bin/check_version_consistency.exs
+
       - name: Prepare mix
         run: |
           mix local.hex --force
@@ -34,9 +37,6 @@ jobs:
 
       - name: Install dependencies
         run: mix deps.get
-
-      - name: Check version consistency
-        run: elixir bin/check_version_consistency.exs
 
       - name: Run tests
         run: |

@@ -14,10 +14,10 @@ jobs:
     container:
       image: ghcr.io/biyooon-ex/giocci_platform/zenohd:1.8.0
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Cache deps and build
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             deps

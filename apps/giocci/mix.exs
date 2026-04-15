@@ -35,7 +35,7 @@ defmodule Giocci.MixProject do
       {:mock, "~> 0.3.0", only: :test},
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
       # for test
-      {:doctest_formatter, "== 0.2.0"}
+      {:doctest_formatter, "== 0.4.1"}
     ]
   end
 

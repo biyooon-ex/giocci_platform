@@ -21,9 +21,8 @@ defmodule GiocciEngine.SessionManager do
     zenoh_config =
       case Keyword.get(args, :zenoh_config_file_path) do
         nil ->
-          default_config = Zenohex.Config.default()
-          {:ok, updated_config} = Zenohex.Config.insert_json5(default_config, "mode", "client")
-          updated_config
+          Zenohex.Config.default()
+          |> insert_json5!("mode", "client")
 
         zenoh_config_file_path ->
           zenoh_config_file_path
@@ -52,14 +51,11 @@ defmodule GiocciEngine.SessionManager do
               zenoh_config
 
             _ ->
-              {:ok, updated_config} =
-                Zenohex.Config.insert_json5(
-                  zenoh_config,
-                  "connect/endpoints",
-                  endpoints |> :json.encode() |> IO.iodata_to_binary()
-                )
-
-              updated_config
+              zenoh_config
+              |> insert_json5!(
+                "connect/endpoints",
+                endpoints |> :json.encode() |> IO.iodata_to_binary()
+              )
           end
       end
 
@@ -73,5 +69,12 @@ defmodule GiocciEngine.SessionManager do
 
   def handle_call(:session_id, _from, state) do
     {:reply, state.session_id, state}
+  end
+
+  defp insert_json5!(config, key, value) do
+    case Zenohex.Config.insert_json5(config, key, value) do
+      {:ok, updated_config} -> updated_config
+      {:error, reason} -> raise "Failed to update Zenoh config (#{key}): #{inspect(reason)}"
+    end
   end
 end

@@ -22,16 +22,10 @@ defmodule Giocci.SessionManager do
       case Keyword.get(args, :zenoh_config_file_path) do
         nil ->
           Zenohex.Config.default()
-          |> Zenohex.Config.update_in(["mode"], fn _ -> "client" end)
+          |> insert_json5!("mode", "client")
 
         zenoh_config_file_path ->
-          zenoh_config_file_path
-          |> File.read!()
-          |> Zenohex.Config.from_json5()
-          |> case do
-            {:ok, clean_json} -> clean_json
-            {:error, reason} -> raise "Failed to parse Zenoh config: #{inspect(reason)}"
-          end
+          Zenohex.Config.from_file(zenoh_config_file_path)
       end
 
     zenoh_config =
@@ -50,10 +44,16 @@ defmodule Giocci.SessionManager do
             [] ->
               zenoh_config
 
+            # In zenohex v0.9.0, `value` is restricted to `binary` only and does not accept arrays directly.
+            # This issue is being addressed in PR below and is scheduled to be included in the next release.
+            # https://github.com/biyooon-ex/zenohex/pull/181
+            # After that, we can remove encoding endpoints procedure and directly pass the list.
             _ ->
-              Zenohex.Config.update_in(zenoh_config, ["connect", "endpoints"], fn _ ->
-                endpoints
-              end)
+              zenoh_config
+              |> insert_json5!(
+                "connect/endpoints",
+                endpoints |> :json.encode() |> IO.iodata_to_binary()
+              )
           end
       end
 
@@ -67,5 +67,12 @@ defmodule Giocci.SessionManager do
 
   def handle_call(:session_id, _from, state) do
     {:reply, state.session_id, state}
+  end
+
+  defp insert_json5!(config, key, value) do
+    case Zenohex.Config.insert_json5(config, key, value) do
+      {:ok, updated_config} -> updated_config
+      {:error, reason} -> raise "Failed to update Zenoh config (#{key}): #{inspect(reason)}"
+    end
   end
 end

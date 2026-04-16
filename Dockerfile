@@ -2,14 +2,14 @@ FROM hexpm/elixir:1.19.5-erlang-28.3-ubuntu-noble-20251013
 
 ARG TARGETARCH
 
-ARG ZENOH_VERSION=1.8.0
+ARG ZENOH_VERSION=1.9.0
 ARG ZENOH_URL=https://github.com/eclipse-zenoh/zenoh/releases/download/${ZENOH_VERSION}
 
 # Zenoh architecture mappings and SHA256 checksums for Zenoh releases
 ARG ZENOH_ARCH_amd64=x86_64-unknown-linux-gnu
-ARG ZENOH_SHA256_amd64=bc5a816d49ba0b0a1e9479bef20ee1ebdcb67d21ec78e1cf1b48fd3e4c4cfd60
+ARG ZENOH_SHA256_amd64=f18081184b089e79e605f2c0cb3f7790fbf101ae94942988f716e19e1810a46e
 ARG ZENOH_ARCH_arm64=aarch64-unknown-linux-gnu
-ARG ZENOH_SHA256_arm64=78d884068d76843f191e692734b25fb4d70648b4fa14f91c0c82b2b6a2427485
+ARG ZENOH_SHA256_arm64=34e24153dcf69e18f407eb1d2921226a273960cfaa03cefceb452d16434341e7
 
 ENV GIOCCI_ZENOH_HOME=/opt/zenoh-${ZENOH_VERSION}
 ENV PATH="${GIOCCI_ZENOH_HOME}:${PATH}"

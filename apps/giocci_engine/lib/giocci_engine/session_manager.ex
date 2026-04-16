@@ -44,6 +44,10 @@ defmodule GiocciEngine.SessionManager do
             [] ->
               zenoh_config
 
+            # In zenohex v0.9.0, `value` is restricted to `binary` only and does not accept arrays directly.
+            # This issue is being addressed in PR below and is scheduled to be included in the next release.
+            # https://github.com/biyooon-ex/zenohex/pull/181
+            # After that, we can remove encoding endpoints procedure and directly pass the list.
             _ ->
               zenoh_config
               |> insert_json5!(

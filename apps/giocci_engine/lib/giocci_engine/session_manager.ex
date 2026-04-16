@@ -25,13 +25,7 @@ defmodule GiocciEngine.SessionManager do
           |> insert_json5!("mode", "client")
 
         zenoh_config_file_path ->
-          zenoh_config_file_path
-          |> File.read!()
-          |> Zenohex.Config.from_json5()
-          |> case do
-            {:ok, clean_json} -> clean_json
-            {:error, reason} -> raise "Failed to parse Zenoh config: #{inspect(reason)}"
-          end
+          Zenohex.Config.from_file(zenoh_config_file_path)
       end
 
     zenoh_config =

@@ -17,8 +17,9 @@ ENV ERL_AFLAGS="+JMsingle true"
 
 RUN mix local.hex --force && mix local.rebar --force
 
-# Copy VERSIONS to the repo-root equivalent so mix.exs can find it via ../../VERSIONS
+# Copy VERSIONS and mix_helpers to the repo-root equivalent so mix.exs can find them
 COPY VERSIONS ./
+COPY bin/mix_helpers.exs bin/
 COPY apps/giocci_engine/mix.exs apps/giocci_engine/mix.lock apps/giocci_engine/
 COPY apps/giocci_engine/config apps/giocci_engine/config
 

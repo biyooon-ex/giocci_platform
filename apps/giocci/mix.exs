@@ -31,7 +31,7 @@ defmodule Giocci.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:zenohex, "== #{@zenohex_version}"},
+      {:zenohex, "== #{zenohex_version()}"},
       {:mock, "~> 0.3.0", only: :test},
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false}
     ]
@@ -63,7 +63,22 @@ defmodule Giocci.MixProject do
     ]
   end
 
-  defp version do
+  def releases do
+    [
+      giocci: [
+        include_executables_for: [:unix],
+        applications: [giocci: :permanent],
+        config_providers: [
+          {Config.Reader, {:system, "RELEASE_ROOT", "/giocci.exs"}}
+        ]
+      ]
+    ]
+  end
+
+  # Load and (if running in the umbrella) sync the VERSIONS file from repo root.
+  # Returns a map of all version key-value pairs.
+  # Falls back to dummy versions when VERSIONS is absent in a Dependabot environment.
+  defp load_versions do
     versions_file = "VERSIONS"
     versions_file_header = "version manifest for giocci_platform"
     versions_path = Path.join([__DIR__, versions_file])
@@ -80,20 +95,26 @@ defmodule Giocci.MixProject do
     if File.exists?(versions_path) do
       versions_path
       |> File.read!()
-      |> String.split("\n")
-      |> Enum.find_value(fn
-        "PROJECT_VERSION=" <> version -> String.trim(version)
-        _ -> false
-      end) || raise("PROJECT_VERSION not found in VERSIONS")
+      |> String.split("\n", trim: true)
+      |> Enum.reject(&String.starts_with?(&1, "#"))
+      |> Enum.reduce(%{}, fn line, acc ->
+        case String.split(line, "=", parts: 2) do
+          [k, v] -> Map.put(acc, String.trim(k), String.trim(v))
+          _ -> acc
+        end
+      end)
     else
       case System.get_env("DEPENDABOT") do
         "true" ->
-          # Fallback to dummy version for Dependabot compatibility
+          # Fallback to dummy versions for Dependabot compatibility
           IO.warn(
-            "VERSIONS file not found at #{versions_path}; using dummy project version for Dependabot environment"
+            "VERSIONS file not found at #{versions_path}; using dummy versions for Dependabot environment"
           )
 
-          "0.1.0-dependabot"
+          %{
+            "PROJECT_VERSION" => "0.1.0-dependabot",
+            "ZENOHEX_VERSION" => "0.0.0-dependabot"
+          }
 
         _ ->
           raise("VERSIONS file not found at #{versions_path}")
@@ -101,15 +122,11 @@ defmodule Giocci.MixProject do
     end
   end
 
-  def releases do
-    [
-      giocci: [
-        include_executables_for: [:unix],
-        applications: [giocci: :permanent],
-        config_providers: [
-          {Config.Reader, {:system, "RELEASE_ROOT", "/giocci.exs"}}
-        ]
-      ]
-    ]
+  defp version do
+    load_versions()["PROJECT_VERSION"] || raise("PROJECT_VERSION not found in VERSIONS")
+  end
+
+  defp zenohex_version do
+    load_versions()["ZENOHEX_VERSION"] || raise("ZENOHEX_VERSION not found in VERSIONS")
   end
 end

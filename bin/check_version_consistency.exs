@@ -243,12 +243,22 @@ defmodule CheckVersions do
     )
   end
 
-  defp check_app_docker_compose(errors, _versions) do
-    [
-      "apps/giocci/docker-compose.yml",
-      "apps/giocci_engine/docker-compose.yml",
-      "apps/giocci_relay/docker-compose.yml"
-    ]
+  defp check_app_docker_compose(errors, versions) do
+    project_version = versions["PROJECT_VERSION"]
+
+    # giocci uses ${PROJECT_VERSION} variable interpolation (sourced from VERSIONS via --env-file)
+    errors =
+      check_match(
+        errors,
+        "apps/giocci/docker-compose.yml",
+        File.read!("apps/giocci/docker-compose.yml"),
+        ~r/image:\s+\S+:\$\{PROJECT_VERSION\}/,
+        "image tag should use ${PROJECT_VERSION} variable",
+        "${PROJECT_VERSION}"
+      )
+
+    # giocci_engine and giocci_relay hardcode the image tag for operator use
+    ["apps/giocci_engine/docker-compose.yml", "apps/giocci_relay/docker-compose.yml"]
     |> Enum.reduce(errors, fn file, acc ->
       content = File.read!(file)
 
@@ -256,9 +266,9 @@ defmodule CheckVersions do
         acc,
         file,
         content,
-        ~r/image:\s+\S+:\$\{PROJECT_VERSION\}/,
-        "image tag should use ${PROJECT_VERSION} variable",
-        "${PROJECT_VERSION}"
+        ~r/image:\s+\S+:#{Regex.escape(project_version)}/,
+        "image tag mismatch",
+        project_version
       )
     end)
   end

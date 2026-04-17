@@ -1,0 +1,51 @@
+name: Release Assets for Giocci Containers
+
+on:
+  release:
+    types:
+      - published
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing tag to upload assets to (e.g. v0.5.1)
+        required: true
+        type: string
+
+jobs:
+  upload-giocci-container-release-assets:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - name: Build giocci_relay.zip
+        shell: bash
+        run: |
+          mkdir -p release_assets/giocci_relay
+          cp -R apps/giocci_relay/config release_assets/giocci_relay/
+          cp apps/giocci_relay/docker-compose.yml release_assets/giocci_relay/
+          cd release_assets/giocci_relay
+          zip -r ../../giocci_relay.zip config docker-compose.yml
+
+      - name: Build giocci_engine.zip
+        shell: bash
+        run: |
+          mkdir -p release_assets/giocci_engine
+          cp -R apps/giocci_engine/config release_assets/giocci_engine/
+          cp apps/giocci_engine/docker-compose.yml release_assets/giocci_engine/
+          cd release_assets/giocci_engine
+          zip -r ../../giocci_engine.zip config docker-compose.yml
+
+      - name: Upload asset to GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ inputs.tag || github.ref_name }}
+          files: |
+            giocci_relay.zip
+            giocci_engine.zip
+          overwrite_files: true
+          generate_release_notes: false

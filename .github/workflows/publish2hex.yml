@@ -1,9 +1,9 @@
 name: publish2hex
 
 on:
-  push:
-    tags:
-      - '*'
+  release:
+    types:
+      - published
 
 jobs:
   publish2hex:

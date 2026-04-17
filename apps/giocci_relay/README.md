@@ -9,10 +9,12 @@ GiocciRelay is a relay component for the GiocciPlatform that forwards messages b
 
 ## How to run giocci_relay on your server
 
-1. Download `./config` and `./docker-compose.yml` to your working directory
+1. Download `giocci_relay.zip` from the [GiocciPlatform Releases page](https://github.com/biyooon-ex/giocci_platform/releases) and extract it in your working directory (`v0.5.1` and later)
+   - The zip contains `./config/` and `./docker-compose.yml`
+   - For stable operation, we recommend using the same release version across API and containers.
 
 2. Edit `config/zenoh.json5` to configure Zenoh connection:
-   - This file is copied from [the official Zenoh repository](https://github.com/eclipse-zenoh/zenoh/blob/main/DEFAULT_CONFIG.json5) and modifiled for Giocci (check `MODIFIED_FOR_GIOCCI` label in the file).
+   - This file is copied from [the official Zenoh repository](https://github.com/eclipse-zenoh/zenoh/blob/main/DEFAULT_CONFIG.json5) and modified for Giocci (check `MODIFIED_FOR_GIOCCI` label in the file).
    - Set `connect.endpoints` to your Zenohd server address (e.g., `["tcp/192.168.1.100:7447"]`)
    - Alternatively, set the `ZENOHD_CONNECT_ENDPOINTS` environment variable (e.g., `ZENOHD_CONNECT_ENDPOINTS=tcp/192.168.1.100:7447`) to avoid storing the IP address in the config file
 

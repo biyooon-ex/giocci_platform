@@ -3,6 +3,8 @@ Code.require_file("mix_helpers.exs", Path.join(__DIR__, "bin"))
 defmodule GiocciPlatform.MixProject do
   use Mix.Project
 
+  @versions MixHelpers.load_versions!(Path.join(__DIR__, "VERSIONS"))
+
   def project do
     [
       apps_path: "apps",
@@ -38,9 +40,6 @@ defmodule GiocciPlatform.MixProject do
   end
 
   defp version do
-    versions_path = Path.join(__DIR__, "VERSIONS")
-
-    MixHelpers.load_versions!(versions_path)["PROJECT_VERSION"] ||
-      raise("PROJECT_VERSION not found in VERSIONS")
+    @versions["PROJECT_VERSION"] || raise("PROJECT_VERSION not found in VERSIONS")
   end
 end

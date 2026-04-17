@@ -51,6 +51,24 @@ defmodule GiocciIntegrationTestTest do
     :ok
   end
 
+  defp assert_normal_scenario_works do
+    assert :ok == Giocci.register_client(@relay_name)
+    assert :ok == Giocci.save_module(@relay_name, GiocciIntegrationTest)
+    assert 3 == Giocci.exec_func(@relay_name, {GiocciIntegrationTest, :add, [1, 2]})
+
+    assert {:error, "function_not_defined: {GiocciIntegrationTest, :undefined_function, []}"} ==
+             Giocci.exec_func(
+               @relay_name,
+               {GiocciIntegrationTest, :undefined_function, []}
+             )
+
+    :ok = Giocci.exec_func_async(@relay_name, {GiocciIntegrationTest, :add, [1, 2]}, self())
+
+    assert_receive {:giocci, 3},
+                   @async_message_timeout,
+                   "Expected async response with result 3"
+  end
+
   describe "happy path" do
     setup do
       setup_relay_and_client()
@@ -59,22 +77,7 @@ defmodule GiocciIntegrationTestTest do
     end
 
     test "normal scenario" do
-      assert :ok == Giocci.register_client(@relay_name)
-      assert :ok == Giocci.save_module(@relay_name, GiocciIntegrationTest)
-      assert 3 == Giocci.exec_func(@relay_name, {GiocciIntegrationTest, :add, [1, 2]})
-
-      assert {:error, "function_not_defined: {GiocciIntegrationTest, :undefined_function, []}"} ==
-               Giocci.exec_func(
-                 @relay_name,
-                 {GiocciIntegrationTest, :undefined_function, []}
-               )
-
-      :ok =
-        Giocci.exec_func_async(@relay_name, {GiocciIntegrationTest, :add, [1, 2]}, self())
-
-      assert_receive {:giocci, 3},
-                     @async_message_timeout,
-                     "Expected async response with result 3"
+      assert_normal_scenario_works()
     end
   end
 
@@ -182,9 +185,7 @@ defmodule GiocciIntegrationTestTest do
       setup_relay_and_client()
       setup_engine()
 
-      assert :ok == Giocci.register_client(@relay_name)
-      assert :ok == Giocci.save_module(@relay_name, GiocciIntegrationTest)
-      assert 3 == Giocci.exec_func(@relay_name, {GiocciIntegrationTest, :add, [1, 2]})
+      assert_normal_scenario_works()
     end
 
     test "multiple comma-separated endpoints with spaces: connects and works" do
@@ -194,9 +195,7 @@ defmodule GiocciIntegrationTestTest do
       setup_relay_and_client()
       setup_engine()
 
-      assert :ok == Giocci.register_client(@relay_name)
-      assert :ok == Giocci.save_module(@relay_name, GiocciIntegrationTest)
-      assert 3 == Giocci.exec_func(@relay_name, {GiocciIntegrationTest, :add, [1, 2]})
+      assert_normal_scenario_works()
     end
 
     test "trailing comma with whitespace: whitespace-only segments are ignored" do
@@ -204,9 +203,7 @@ defmodule GiocciIntegrationTestTest do
       setup_relay_and_client()
       setup_engine()
 
-      assert :ok == Giocci.register_client(@relay_name)
-      assert :ok == Giocci.save_module(@relay_name, GiocciIntegrationTest)
-      assert 3 == Giocci.exec_func(@relay_name, {GiocciIntegrationTest, :add, [1, 2]})
+      assert_normal_scenario_works()
     end
 
     test "empty string: does not override connect.endpoints and normal scenario works" do
@@ -214,9 +211,7 @@ defmodule GiocciIntegrationTestTest do
       setup_relay_and_client()
       setup_engine()
 
-      assert :ok == Giocci.register_client(@relay_name)
-      assert :ok == Giocci.save_module(@relay_name, GiocciIntegrationTest)
-      assert 3 == Giocci.exec_func(@relay_name, {GiocciIntegrationTest, :add, [1, 2]})
+      assert_normal_scenario_works()
     end
 
     test "whitespace-only: does not override connect.endpoints and normal scenario works" do
@@ -224,9 +219,7 @@ defmodule GiocciIntegrationTestTest do
       setup_relay_and_client()
       setup_engine()
 
-      assert :ok == Giocci.register_client(@relay_name)
-      assert :ok == Giocci.save_module(@relay_name, GiocciIntegrationTest)
-      assert 3 == Giocci.exec_func(@relay_name, {GiocciIntegrationTest, :add, [1, 2]})
+      assert_normal_scenario_works()
     end
 
     test "commas-only: does not override connect.endpoints and normal scenario works" do
@@ -234,9 +227,7 @@ defmodule GiocciIntegrationTestTest do
       setup_relay_and_client()
       setup_engine()
 
-      assert :ok == Giocci.register_client(@relay_name)
-      assert :ok == Giocci.save_module(@relay_name, GiocciIntegrationTest)
-      assert 3 == Giocci.exec_func(@relay_name, {GiocciIntegrationTest, :add, [1, 2]})
+      assert_normal_scenario_works()
     end
   end
 
@@ -272,9 +263,7 @@ defmodule GiocciIntegrationTestTest do
       setup_relay_and_client()
       setup_engine()
 
-      assert :ok == Giocci.register_client(@relay_name)
-      assert :ok == Giocci.save_module(@relay_name, GiocciIntegrationTest)
-      assert 3 == Giocci.exec_func(@relay_name, {GiocciIntegrationTest, :add, [1, 2]})
+      assert_normal_scenario_works()
     end
   end
 

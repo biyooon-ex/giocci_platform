@@ -1,9 +1,9 @@
 name: Release Assets for Giocci Containers
 
 on:
-  push:
-    tags:
-      - '*'
+  release:
+    types:
+      - published
   workflow_dispatch:
     inputs:
       tag:
@@ -48,4 +48,4 @@ jobs:
             giocci_relay.zip
             giocci_engine.zip
           overwrite_files: true
-          generate_release_notes: true
+          generate_release_notes: false

@@ -248,6 +248,7 @@ defmodule GiocciIntegrationTestTest do
         :ok = Application.delete_env(:giocci, :zenoh_config_file_path)
         :ok = Application.delete_env(:giocci_relay, :zenoh_config_file_path)
         :ok = Application.delete_env(:giocci_engine, :zenoh_config_file_path)
+        :ok = System.delete_env("ZENOHD_CONNECT_ENDPOINTS")
       end)
 
       :ok

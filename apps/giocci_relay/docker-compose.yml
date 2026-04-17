@@ -1,6 +1,6 @@
 services:
   giocci_relay:
-    image: ghcr.io/biyooon-ex/giocci_platform/giocci_relay:0.5.0
+    image: ghcr.io/biyooon-ex/giocci_platform/giocci_relay:0.5.1
     build:
       context: ../../
       dockerfile: ./apps/giocci_relay/Dockerfile

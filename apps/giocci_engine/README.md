@@ -10,7 +10,7 @@ GiocciEngine is the execution engine component of the GiocciPlatform that receiv
 
 ## How to run giocci_engine on your server
 
-1. Download `giocci_engine.zip` from the GitHub Releases page and extract it in your working directory (`v0.5.1` and later)
+1. Download `giocci_engine.zip` from the [GiocciPlatform Releases page](https://github.com/biyooon-ex/giocci_platform/releases) and extract it in your working directory (`v0.5.1` and later)
    - The zip contains `./config/` and `./docker-compose.yml`
    - For stable operation, we recommend using the same release version across API and containers.
 

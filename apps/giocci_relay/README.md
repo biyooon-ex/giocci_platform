@@ -9,7 +9,7 @@ GiocciRelay is a relay component for the GiocciPlatform that forwards messages b
 
 ## How to run giocci_relay on your server
 
-1. Download `giocci_relay.zip` from the GitHub Releases page and extract it in your working directory (`v0.5.1` and later)
+1. Download `giocci_relay.zip` from the [GiocciPlatform Releases page](https://github.com/biyooon-ex/giocci_platform/releases) and extract it in your working directory (`v0.5.1` and later)
    - The zip contains `./config/` and `./docker-compose.yml`
    - For stable operation, we recommend using the same release version across API and containers.
 

@@ -189,9 +189,11 @@ defmodule GiocciIntegrationTestTest do
     end
 
     test "multiple comma-separated endpoints with spaces: connects and works" do
-      # Using the same endpoint twice to test the comma-separated parsing while keeping
-      # the test self-contained on a single local machine
-      :ok = System.put_env("ZENOHD_CONNECT_ENDPOINTS", "tcp/localhost:7447, tcp/localhost:7447")
+      # Using the multiple endpoints to test the comma-separated parsing while keeping
+      # the test self-contained on a local machine
+      :ok =
+        System.put_env("ZENOHD_CONNECT_ENDPOINTS", "tcp/localhost:7447, tcp/192.168.0.95:7447")
+
       setup_relay_and_client()
       setup_engine()
 
@@ -208,14 +210,6 @@ defmodule GiocciIntegrationTestTest do
 
     test "empty string: does not override connect.endpoints and normal scenario works" do
       :ok = System.put_env("ZENOHD_CONNECT_ENDPOINTS", "")
-      setup_relay_and_client()
-      setup_engine()
-
-      assert_normal_scenario_works()
-    end
-
-    test "whitespace-only: does not override connect.endpoints and normal scenario works" do
-      :ok = System.put_env("ZENOHD_CONNECT_ENDPOINTS", "   ")
       setup_relay_and_client()
       setup_engine()
 

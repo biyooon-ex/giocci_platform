@@ -23,7 +23,13 @@ defmodule GiocciRelay.SessionManager do
           |> insert_json5!("mode", "client")
 
         zenoh_config_file_path ->
-          Zenohex.Config.from_file(zenoh_config_file_path)
+          case Zenohex.Config.from_file(zenoh_config_file_path) do
+            {:ok, config} ->
+              config
+
+            {:error, reason} ->
+              raise "Failed to load Zenoh config file from (#{zenoh_config_file_path}): #{inspect(reason)}"
+          end
       end
 
     zenoh_config =

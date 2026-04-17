@@ -6,6 +6,9 @@ defmodule GiocciIntegrationTestTest do
   @relay_name "giocci_relay"
   @engine_name "giocci_engine"
   @client_name "giocci"
+  @giocci_zenoh_config_path Path.expand("../../giocci/config/zenoh.json5", __DIR__)
+  @giocci_relay_zenoh_config_path Path.expand("../../giocci_relay/config/zenoh.json5", __DIR__)
+  @giocci_engine_zenoh_config_path Path.expand("../../giocci_engine/config/zenoh.json5", __DIR__)
 
   # Timeout for waiting engine response after it's stopped
   @engine_stopped_timeout 1000
@@ -48,6 +51,24 @@ defmodule GiocciIntegrationTestTest do
     :ok
   end
 
+  defp assert_normal_scenario_works do
+    assert :ok == Giocci.register_client(@relay_name)
+    assert :ok == Giocci.save_module(@relay_name, GiocciIntegrationTest)
+    assert 3 == Giocci.exec_func(@relay_name, {GiocciIntegrationTest, :add, [1, 2]})
+
+    assert {:error, "function_not_defined: {GiocciIntegrationTest, :undefined_function, []}"} ==
+             Giocci.exec_func(
+               @relay_name,
+               {GiocciIntegrationTest, :undefined_function, []}
+             )
+
+    :ok = Giocci.exec_func_async(@relay_name, {GiocciIntegrationTest, :add, [1, 2]}, self())
+
+    assert_receive {:giocci, 3},
+                   @async_message_timeout,
+                   "Expected async response with result 3"
+  end
+
   describe "happy path" do
     setup do
       setup_relay_and_client()
@@ -56,22 +77,7 @@ defmodule GiocciIntegrationTestTest do
     end
 
     test "normal scenario" do
-      assert :ok == Giocci.register_client(@relay_name)
-      assert :ok == Giocci.save_module(@relay_name, GiocciIntegrationTest)
-      assert 3 == Giocci.exec_func(@relay_name, {GiocciIntegrationTest, :add, [1, 2]})
-
-      assert {:error, "function_not_defined: {GiocciIntegrationTest, :undefined_function, []}"} ==
-               Giocci.exec_func(
-                 @relay_name,
-                 {GiocciIntegrationTest, :undefined_function, []}
-               )
-
-      :ok =
-        Giocci.exec_func_async(@relay_name, {GiocciIntegrationTest, :add, [1, 2]}, self())
-
-      assert_receive {:giocci, 3},
-                     @async_message_timeout,
-                     "Expected async response with result 3"
+      assert_normal_scenario_works()
     end
   end
 
@@ -168,72 +174,91 @@ defmodule GiocciIntegrationTestTest do
   describe "operation when ZENOHD_CONNECT_ENDPOINTS is set" do
     setup do
       on_exit(fn ->
-        System.delete_env("ZENOHD_CONNECT_ENDPOINTS")
+        :ok = System.delete_env("ZENOHD_CONNECT_ENDPOINTS")
       end)
 
       :ok
     end
 
     test "single endpoint: connects all components and normal scenario works" do
-      System.put_env("ZENOHD_CONNECT_ENDPOINTS", "tcp/localhost:7447")
+      :ok = System.put_env("ZENOHD_CONNECT_ENDPOINTS", "tcp/localhost:7447")
       setup_relay_and_client()
       setup_engine()
 
-      assert :ok == Giocci.register_client(@relay_name)
-      assert :ok == Giocci.save_module(@relay_name, GiocciIntegrationTest)
-      assert 3 == Giocci.exec_func(@relay_name, {GiocciIntegrationTest, :add, [1, 2]})
+      assert_normal_scenario_works()
     end
 
     test "multiple comma-separated endpoints with spaces: connects and works" do
-      # Using the same endpoint twice to test the comma-separated parsing while keeping
-      # the test self-contained on a single local machine
-      System.put_env("ZENOHD_CONNECT_ENDPOINTS", "tcp/localhost:7447, tcp/localhost:7447")
+      # Using the multiple endpoints to test the comma-separated parsing while keeping
+      # the test self-contained on a local machine
+      :ok =
+        System.put_env("ZENOHD_CONNECT_ENDPOINTS", "tcp/localhost:7447, tcp/192.168.0.95:7447")
+
       setup_relay_and_client()
       setup_engine()
 
-      assert :ok == Giocci.register_client(@relay_name)
-      assert :ok == Giocci.save_module(@relay_name, GiocciIntegrationTest)
-      assert 3 == Giocci.exec_func(@relay_name, {GiocciIntegrationTest, :add, [1, 2]})
+      assert_normal_scenario_works()
     end
 
     test "trailing comma with whitespace: whitespace-only segments are ignored" do
-      System.put_env("ZENOHD_CONNECT_ENDPOINTS", "tcp/localhost:7447, ")
+      :ok = System.put_env("ZENOHD_CONNECT_ENDPOINTS", "tcp/localhost:7447, ")
       setup_relay_and_client()
       setup_engine()
 
-      assert :ok == Giocci.register_client(@relay_name)
-      assert :ok == Giocci.save_module(@relay_name, GiocciIntegrationTest)
-      assert 3 == Giocci.exec_func(@relay_name, {GiocciIntegrationTest, :add, [1, 2]})
+      assert_normal_scenario_works()
     end
 
     test "empty string: does not override connect.endpoints and normal scenario works" do
-      System.put_env("ZENOHD_CONNECT_ENDPOINTS", "")
+      :ok = System.put_env("ZENOHD_CONNECT_ENDPOINTS", "")
       setup_relay_and_client()
       setup_engine()
 
-      assert :ok == Giocci.register_client(@relay_name)
-      assert :ok == Giocci.save_module(@relay_name, GiocciIntegrationTest)
-      assert 3 == Giocci.exec_func(@relay_name, {GiocciIntegrationTest, :add, [1, 2]})
-    end
-
-    test "whitespace-only: does not override connect.endpoints and normal scenario works" do
-      System.put_env("ZENOHD_CONNECT_ENDPOINTS", "   ")
-      setup_relay_and_client()
-      setup_engine()
-
-      assert :ok == Giocci.register_client(@relay_name)
-      assert :ok == Giocci.save_module(@relay_name, GiocciIntegrationTest)
-      assert 3 == Giocci.exec_func(@relay_name, {GiocciIntegrationTest, :add, [1, 2]})
+      assert_normal_scenario_works()
     end
 
     test "commas-only: does not override connect.endpoints and normal scenario works" do
-      System.put_env("ZENOHD_CONNECT_ENDPOINTS", ",,")
+      :ok = System.put_env("ZENOHD_CONNECT_ENDPOINTS", ",,")
       setup_relay_and_client()
       setup_engine()
 
-      assert :ok == Giocci.register_client(@relay_name)
-      assert :ok == Giocci.save_module(@relay_name, GiocciIntegrationTest)
-      assert 3 == Giocci.exec_func(@relay_name, {GiocciIntegrationTest, :add, [1, 2]})
+      assert_normal_scenario_works()
+    end
+  end
+
+  describe "operation with zenoh_config_file_path" do
+    setup do
+      :ok = System.put_env("ZENOHD_CONNECT_ENDPOINTS", "tcp/localhost:7447")
+      :ok = Application.put_env(:giocci, :zenoh_config_file_path, @giocci_zenoh_config_path)
+
+      :ok =
+        Application.put_env(
+          :giocci_relay,
+          :zenoh_config_file_path,
+          @giocci_relay_zenoh_config_path
+        )
+
+      :ok =
+        Application.put_env(
+          :giocci_engine,
+          :zenoh_config_file_path,
+          @giocci_engine_zenoh_config_path
+        )
+
+      on_exit(fn ->
+        :ok = Application.delete_env(:giocci, :zenoh_config_file_path)
+        :ok = Application.delete_env(:giocci_relay, :zenoh_config_file_path)
+        :ok = Application.delete_env(:giocci_engine, :zenoh_config_file_path)
+        :ok = System.delete_env("ZENOHD_CONNECT_ENDPOINTS")
+      end)
+
+      :ok
+    end
+
+    test "all components start and normal scenario works with zenoh_config_file_path" do
+      setup_relay_and_client()
+      setup_engine()
+
+      assert_normal_scenario_works()
     end
   end
 

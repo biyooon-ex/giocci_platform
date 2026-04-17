@@ -171,14 +171,14 @@ defmodule GiocciIntegrationTestTest do
   describe "operation when ZENOHD_CONNECT_ENDPOINTS is set" do
     setup do
       on_exit(fn ->
-        System.delete_env("ZENOHD_CONNECT_ENDPOINTS")
+        :ok = System.delete_env("ZENOHD_CONNECT_ENDPOINTS")
       end)
 
       :ok
     end
 
     test "single endpoint: connects all components and normal scenario works" do
-      System.put_env("ZENOHD_CONNECT_ENDPOINTS", "tcp/localhost:7447")
+      :ok = System.put_env("ZENOHD_CONNECT_ENDPOINTS", "tcp/localhost:7447")
       setup_relay_and_client()
       setup_engine()
 
@@ -190,7 +190,7 @@ defmodule GiocciIntegrationTestTest do
     test "multiple comma-separated endpoints with spaces: connects and works" do
       # Using the same endpoint twice to test the comma-separated parsing while keeping
       # the test self-contained on a single local machine
-      System.put_env("ZENOHD_CONNECT_ENDPOINTS", "tcp/localhost:7447, tcp/localhost:7447")
+      :ok = System.put_env("ZENOHD_CONNECT_ENDPOINTS", "tcp/localhost:7447, tcp/localhost:7447")
       setup_relay_and_client()
       setup_engine()
 
@@ -200,7 +200,7 @@ defmodule GiocciIntegrationTestTest do
     end
 
     test "trailing comma with whitespace: whitespace-only segments are ignored" do
-      System.put_env("ZENOHD_CONNECT_ENDPOINTS", "tcp/localhost:7447, ")
+      :ok = System.put_env("ZENOHD_CONNECT_ENDPOINTS", "tcp/localhost:7447, ")
       setup_relay_and_client()
       setup_engine()
 
@@ -210,7 +210,7 @@ defmodule GiocciIntegrationTestTest do
     end
 
     test "empty string: does not override connect.endpoints and normal scenario works" do
-      System.put_env("ZENOHD_CONNECT_ENDPOINTS", "")
+      :ok = System.put_env("ZENOHD_CONNECT_ENDPOINTS", "")
       setup_relay_and_client()
       setup_engine()
 
@@ -220,7 +220,7 @@ defmodule GiocciIntegrationTestTest do
     end
 
     test "whitespace-only: does not override connect.endpoints and normal scenario works" do
-      System.put_env("ZENOHD_CONNECT_ENDPOINTS", "   ")
+      :ok = System.put_env("ZENOHD_CONNECT_ENDPOINTS", "   ")
       setup_relay_and_client()
       setup_engine()
 
@@ -230,7 +230,7 @@ defmodule GiocciIntegrationTestTest do
     end
 
     test "commas-only: does not override connect.endpoints and normal scenario works" do
-      System.put_env("ZENOHD_CONNECT_ENDPOINTS", ",,")
+      :ok = System.put_env("ZENOHD_CONNECT_ENDPOINTS", ",,")
       setup_relay_and_client()
       setup_engine()
 
@@ -242,7 +242,7 @@ defmodule GiocciIntegrationTestTest do
 
   describe "operation with zenoh_config_file_path" do
     setup do
-      System.put_env("ZENOHD_CONNECT_ENDPOINTS", "tcp/localhost:7447")
+      :ok = System.put_env("ZENOHD_CONNECT_ENDPOINTS", "tcp/localhost:7447")
       :ok = Application.put_env(:giocci, :zenoh_config_file_path, @giocci_zenoh_config_path)
 
       :ok =

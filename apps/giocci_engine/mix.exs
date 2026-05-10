@@ -30,7 +30,7 @@ defmodule GiocciEngine.MixProject do
       end) || raise("PROJECT_VERSION not found in VERSIONS")
     else
       if allow_missing_versions?() do
-        fallback_version = "0.0.0-dev"
+        fallback_version = "0.0.0"
 
         IO.warn(
           "VERSIONS file not found at #{versions_path}; using fallback version #{fallback_version}"

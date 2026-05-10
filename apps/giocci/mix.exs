@@ -86,19 +86,25 @@ defmodule Giocci.MixProject do
         _ -> false
       end) || raise("PROJECT_VERSION not found in VERSIONS")
     else
-      case System.get_env("DEPENDABOT") do
-        "true" ->
-          # Fallback to dummy version for Dependabot compatibility
-          IO.warn(
-            "VERSIONS file not found at #{versions_path}; using dummy project version for Dependabot environment"
-          )
+      if allow_missing_versions?() do
+        fallback_version = "0.0.0-dev"
 
-          "0.1.0-dependabot"
+        IO.warn(
+          "VERSIONS file not found at #{versions_path}; using fallback version #{fallback_version}"
+        )
 
-        _ ->
-          raise("VERSIONS file not found at #{versions_path}")
+        fallback_version
+      else
+        raise("VERSIONS file not found at #{versions_path}")
       end
     end
+  end
+
+  defp allow_missing_versions? do
+    System.get_env("MIX_ALLOW_MISSING_VERSIONS") == "true" ||
+      System.get_env("DEPENDABOT") == "true" ||
+      (System.get_env("GITHUB_ACTIONS") == "true" &&
+         System.get_env("GITHUB_ACTOR") == "dependabot[bot]")
   end
 
   def releases do

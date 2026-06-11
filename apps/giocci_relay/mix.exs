@@ -61,8 +61,24 @@ defmodule GiocciRelay.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:zenohex, "== 0.9.0"}
+      {:zenohex, "== #{zenohex_version()}"}
     ]
+  end
+
+  defp zenohex_version do
+    versions_path = Path.join([__DIR__, "../..", "VERSIONS"])
+
+    if File.exists?(versions_path) do
+      versions_path
+      |> File.read!()
+      |> String.split("\n")
+      |> Enum.find_value(fn
+        "ZENOHEX_VERSION=" <> version -> String.trim(version)
+        _ -> nil
+      end) || raise("ZENOHEX_VERSION not found in VERSIONS")
+    else
+      raise("VERSIONS file not found at #{versions_path}")
+    end
   end
 
   defp aliases do

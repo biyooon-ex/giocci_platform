@@ -31,10 +31,33 @@ defmodule Giocci.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:zenohex, "== 0.9.0"},
+      {:zenohex, "== #{zenohex_version()}"},
       {:mock, "~> 0.3.0", only: :test},
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false}
     ]
+  end
+
+  defp zenohex_version do
+    local_versions = Path.join(__DIR__, "VERSIONS")
+    parent_versions = Path.join([__DIR__, "../..", "VERSIONS"])
+
+    read_version_key(local_versions, "ZENOHEX_VERSION") ||
+      read_version_key(parent_versions, "ZENOHEX_VERSION") ||
+      raise("ZENOHEX_VERSION not found in VERSIONS")
+  end
+
+  defp read_version_key(path, key) do
+    if File.exists?(path) do
+      path
+      |> File.read!()
+      |> String.split("\n")
+      |> Enum.find_value(fn line ->
+        case String.split(line, "=", parts: 2) do
+          [^key, value] -> String.trim(value)
+          _ -> nil
+        end
+      end)
+    end
   end
 
   defp description() do

@@ -45,7 +45,6 @@ jobs:
       - name: Publish to Hex.pm
         shell: bash
         run: |
-          cd apps/giocci
-          mix hex.publish --yes
+          ./bin/publish_giocci_to_hex.sh --yes
         env:
           HEX_API_KEY: ${{ secrets.HEX_API_KEY }}

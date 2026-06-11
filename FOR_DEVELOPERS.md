@@ -62,8 +62,9 @@ We will increment the patch version of this package/repository when the followin
 
 ### Update version
 
-When updating this project itself or the versions of Zenoh, Elixir, and other dependencies, we must also update the contents of `VERSIONS` file.
-Although there is a copy of this file in `apps/giocci/`, we do not need to edit it since it is automatically copied by mix tasks.
+When updating this project itself or the versions of Zenoh, Elixir, and other dependencies, we must also update the contents of the root `VERSIONS` file.
+
+The umbrella applications read the root `VERSIONS` file when needed. Only `apps/giocci` temporarily receives a copied `VERSIONS` file during Hex publishing so that the file can be included in the package tarball.
 
 ## Building and Publishing
 
@@ -87,9 +88,10 @@ When creating a new tag or release, `apps/giocci` (the client API library) is au
 If a issue occurs and we need to run this manually, proceed as follows to publish the giocci package to Hex.pm from the local:
 
 ```bash
-cd apps/giocci
-mix hex.publish
+./bin/publish_giocci_to_hex.sh
 ```
+
+This script temporarily copies the root `VERSIONS` file into `apps/giocci/`, runs `mix hex.publish`, and removes the copied file afterward.
 
 **Prerequisites**:
 - Ensure version numbers are consistent (run `./bin/check_version_consistency.exs`)
@@ -106,4 +108,4 @@ mix hex.publish
 6. For releases:
    - Update version numbers
    - Build and push Docker images: `./bin/build_and_push_app_images.sh all`
-   - Publish to Hex: `cd apps/giocci && mix hex.publish`
+   - Publish to Hex: `./bin/publish_giocci_to_hex.sh`

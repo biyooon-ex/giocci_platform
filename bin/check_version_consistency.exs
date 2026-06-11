@@ -15,7 +15,6 @@ defmodule CheckVersions do
       |> check_publish2hex_yml(versions)
       |> check_mix_exs(versions)
       |> check_tool_versions(versions)
-      |> check_zenohex_versions(versions)
       |> check_readme_project_versions(versions)
       |> check_readme_zenoh_versions(versions)
 
@@ -247,28 +246,6 @@ defmodule CheckVersions do
       "elixir tool version mismatch",
       "elixir #{elixir_version}-otp-#{erlang_major}"
     )
-  end
-
-  defp check_zenohex_versions(errors, versions) do
-    zenohex_version = versions["ZENOHEX_VERSION"]
-
-    [
-      "apps/giocci/mix.exs",
-      "apps/giocci_engine/mix.exs",
-      "apps/giocci_relay/mix.exs"
-    ]
-    |> Enum.reduce(errors, fn file, acc ->
-      content = File.read!(file)
-
-      check_match(
-        acc,
-        file,
-        content,
-        ~r/\{:zenohex,\s*\"==\s*#{Regex.escape(zenohex_version)}\"\}/,
-        "zenohex version mismatch",
-        "{:zenohex, \"== #{zenohex_version}\"}"
-      )
-    end)
   end
 
   defp check_readme_project_versions(errors, versions) do

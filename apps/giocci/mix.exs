@@ -64,39 +64,37 @@ defmodule Giocci.MixProject do
   end
 
   defp version do
-    versions_file = "VERSIONS"
-    versions_file_header = "version manifest for giocci_platform"
-    versions_path = Path.join([__DIR__, versions_file])
-    parent_versions = Path.join([__DIR__, "../..", versions_file])
+    local_versions = Path.join(__DIR__, "VERSIONS")
+    parent_versions = Path.join([__DIR__, "../..", "VERSIONS"])
 
-    if File.exists?(parent_versions) do
-      content = File.read!(parent_versions)
+    read_version(local_versions) ||
+      read_version(parent_versions) ||
+      fallback_version(local_versions)
+  end
 
-      if String.contains?(content, versions_file_header) do
-        File.write!(versions_path, content)
-      end
-    end
-
-    if File.exists?(versions_path) do
-      versions_path
+  defp read_version(path) do
+    if File.exists?(path) do
+      path
       |> File.read!()
       |> String.split("\n")
       |> Enum.find_value(fn
         "PROJECT_VERSION=" <> version -> String.trim(version)
-        _ -> false
-      end) || raise("PROJECT_VERSION not found in VERSIONS")
+        _ -> nil
+      end)
+    end
+  end
+
+  defp fallback_version(versions_path) do
+    if allow_missing_versions?() do
+      fallback_version = "0.0.0"
+
+      IO.warn(
+        "VERSIONS file not found at #{versions_path}; using fallback version #{fallback_version}"
+      )
+
+      fallback_version
     else
-      if allow_missing_versions?() do
-        fallback_version = "0.0.0"
-
-        IO.warn(
-          "VERSIONS file not found at #{versions_path}; using fallback version #{fallback_version}"
-        )
-
-        fallback_version
-      else
-        raise("VERSIONS file not found at #{versions_path}")
-      end
+      raise("VERSIONS file not found at #{versions_path}")
     end
   end
 

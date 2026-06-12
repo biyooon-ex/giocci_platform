@@ -66,6 +66,12 @@ if [[ ${#SERVICES[@]} -eq 0 ]]; then
   usage
 fi
 
+# Check mutually exclusive options
+if [[ "$DRY_RUN" == "true" && "$LOAD" == "true" ]]; then
+  echo "Error: --dry-run and --load are mutually exclusive" >&2
+  exit 1
+fi
+
 # Define all available services
 ALL_SERVICES=("zenohd" "giocci" "giocci_relay" "giocci_engine")
 VALID_SERVICES=("all" "${ALL_SERVICES[@]}")
@@ -124,7 +130,7 @@ build_service() {
   if [[ "$DRY_RUN" == "true" ]]; then
     docker compose -f "$compose_file" build "$service_name"
   elif [[ "$LOAD" == "true" ]]; then
-    docker compose -f "$compose_file" build --load "$service_name"
+    docker buildx bake -f "$compose_file" --load "$service_name"
   else
     docker compose -f "$compose_file" build --push "$service_name"
   fi

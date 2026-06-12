@@ -28,6 +28,18 @@ defmodule Giocci.MixProject do
     ]
   end
 
+  def releases do
+    [
+      giocci: [
+        include_executables_for: [:unix],
+        applications: [giocci: :permanent],
+        config_providers: [
+          {Config.Reader, {:system, "RELEASE_ROOT", "/giocci.exs"}}
+        ]
+      ]
+    ]
+  end
+
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
@@ -35,6 +47,41 @@ defmodule Giocci.MixProject do
       {:mock, "~> 0.3.0", only: :test},
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false}
     ]
+  end
+
+  defp aliases do
+    [
+      test: ["test --no-start"]
+    ]
+  end
+
+  defp description() do
+    "Client library for GiocciPlatform (resource-permeating computing platform for wide-area distributed systems)"
+  end
+
+  defp package() do
+    [
+      # These are the default files included in the package
+      files: ~w(lib .formatter.exs mix.exs README* LICENSE* VERSIONS),
+      licenses: ["Apache-2.0"],
+      links: %{"GitHub" => "https://github.com/biyooon-ex/giocci_platform"}
+    ]
+  end
+
+  defp docs() do
+    [
+      extras: ["README.md"],
+      main: "readme"
+    ]
+  end
+
+  defp version do
+    local_versions = Path.join(__DIR__, "VERSIONS")
+    parent_versions = Path.join([__DIR__, "../..", "VERSIONS"])
+
+    read_version(local_versions) ||
+      read_version(parent_versions) ||
+      fallback_version(local_versions)
   end
 
   defp zenohex_version do
@@ -58,41 +105,6 @@ defmodule Giocci.MixProject do
         end
       end)
     end
-  end
-
-  defp description() do
-    "Client library for GiocciPlatform (resource-permeating computing platform for wide-area distributed systems)"
-  end
-
-  defp package() do
-    [
-      # These are the default files included in the package
-      files: ~w(lib .formatter.exs mix.exs README* LICENSE* VERSIONS),
-      licenses: ["Apache-2.0"],
-      links: %{"GitHub" => "https://github.com/biyooon-ex/giocci_platform"}
-    ]
-  end
-
-  defp docs() do
-    [
-      extras: ["README.md"],
-      main: "readme"
-    ]
-  end
-
-  defp aliases do
-    [
-      test: ["test --no-start"]
-    ]
-  end
-
-  defp version do
-    local_versions = Path.join(__DIR__, "VERSIONS")
-    parent_versions = Path.join([__DIR__, "../..", "VERSIONS"])
-
-    read_version(local_versions) ||
-      read_version(parent_versions) ||
-      fallback_version(local_versions)
   end
 
   defp read_version(path) do
@@ -126,17 +138,5 @@ defmodule Giocci.MixProject do
       System.get_env("DEPENDABOT") == "true" ||
       (System.get_env("GITHUB_ACTIONS") == "true" &&
          System.get_env("GITHUB_ACTOR") == "dependabot[bot]")
-  end
-
-  def releases do
-    [
-      giocci: [
-        include_executables_for: [:unix],
-        applications: [giocci: :permanent],
-        config_providers: [
-          {Config.Reader, {:system, "RELEASE_ROOT", "/giocci.exs"}}
-        ]
-      ]
-    ]
   end
 end

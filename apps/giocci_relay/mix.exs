@@ -17,6 +17,39 @@ defmodule GiocciRelay.MixProject do
     ]
   end
 
+  # Run "mix help compile.app" to learn about applications.
+  def application do
+    [
+      extra_applications: [:logger],
+      mod: {GiocciRelay.Application, []}
+    ]
+  end
+
+  # Run "mix help deps" to learn about dependencies.
+  defp deps do
+    [
+      {:zenohex, "== #{zenohex_version()}"}
+    ]
+  end
+
+  defp aliases do
+    [
+      test: ["test --no-start"]
+    ]
+  end
+
+  defp releases do
+    [
+      giocci_relay: [
+        include_executables_for: [:unix],
+        applications: [giocci_relay: :permanent],
+        config_providers: [
+          {Config.Reader, {:system, "RELEASE_ROOT", "/giocci_relay.exs"}}
+        ]
+      ]
+    ]
+  end
+
   defp version do
     versions_path = Path.join([__DIR__, "../..", "VERSIONS"])
 
@@ -43,28 +76,6 @@ defmodule GiocciRelay.MixProject do
     end
   end
 
-  defp allow_missing_versions? do
-    System.get_env("MIX_ALLOW_MISSING_VERSIONS") == "true" ||
-      System.get_env("DEPENDABOT") == "true" ||
-      (System.get_env("GITHUB_ACTIONS") == "true" &&
-         System.get_env("GITHUB_ACTOR") == "dependabot[bot]")
-  end
-
-  # Run "mix help compile.app" to learn about applications.
-  def application do
-    [
-      extra_applications: [:logger],
-      mod: {GiocciRelay.Application, []}
-    ]
-  end
-
-  # Run "mix help deps" to learn about dependencies.
-  defp deps do
-    [
-      {:zenohex, "== #{zenohex_version()}"}
-    ]
-  end
-
   defp zenohex_version do
     versions_path = Path.join([__DIR__, "../..", "VERSIONS"])
 
@@ -81,21 +92,10 @@ defmodule GiocciRelay.MixProject do
     end
   end
 
-  defp aliases do
-    [
-      test: ["test --no-start"]
-    ]
-  end
-
-  defp releases do
-    [
-      giocci_relay: [
-        include_executables_for: [:unix],
-        applications: [giocci_relay: :permanent],
-        config_providers: [
-          {Config.Reader, {:system, "RELEASE_ROOT", "/giocci_relay.exs"}}
-        ]
-      ]
-    ]
+  defp allow_missing_versions? do
+    System.get_env("MIX_ALLOW_MISSING_VERSIONS") == "true" ||
+      System.get_env("DEPENDABOT") == "true" ||
+      (System.get_env("GITHUB_ACTIONS") == "true" &&
+         System.get_env("GITHUB_ACTOR") == "dependabot[bot]")
   end
 end

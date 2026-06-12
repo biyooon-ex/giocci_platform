@@ -56,12 +56,15 @@ defmodule Giocci.SessionManager do
           end
       end
 
-    {:ok, session_id} = Zenohex.Session.open(zenoh_config)
+    case Zenohex.Session.open(zenoh_config) do
+      {:ok, session_id} ->
+        {:ok, %{session_id: session_id}}
 
-    {:ok,
-     %{
-       session_id: session_id
-     }}
+      {:error, reason} ->
+        require Logger
+        Logger.error("Failed to open Zenoh session: #{inspect(reason)}")
+        {:stop, {:zenoh_session_open_failed, reason}}
+    end
   end
 
   def handle_call(:session_id, _from, state) do

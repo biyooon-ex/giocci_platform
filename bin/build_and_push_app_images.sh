@@ -130,8 +130,9 @@ build_service() {
   if [[ "$DRY_RUN" == "true" ]]; then
     docker compose -f "$compose_file" build "$service_name"
   elif [[ "$LOAD" == "true" ]]; then
-    # docker buildx bake resolves relative paths from cwd, so cd to the compose file's directory first
-    (cd "$(dirname "$compose_file")" && docker buildx bake -f "$(basename "$compose_file")" --load "$service_name")
+    # docker buildx bake resolves relative paths from cwd, so cd to the compose file's directory first.
+    # BUILDX_BAKE_ENTITLEMENTS_FS=0 suppresses the interactive privilege prompt for fs access.
+    (cd "$(dirname "$compose_file")" && BUILDX_BAKE_ENTITLEMENTS_FS=0 docker buildx bake -f "$(basename "$compose_file")" --load "$service_name")
   else
     docker compose -f "$compose_file" build --push "$service_name"
   fi

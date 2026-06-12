@@ -8,6 +8,7 @@ on:
       - "docker-compose.yml"
       - "apps/*/Dockerfile"
       - "apps/*/docker-compose.yml"
+      - "bin/build_and_push_app_images.sh"
   pull_request:
     paths:
       - "VERSIONS"
@@ -15,6 +16,7 @@ on:
       - "docker-compose.yml"
       - "apps/*/Dockerfile"
       - "apps/*/docker-compose.yml"
+      - "bin/build_and_push_app_images.sh"
 
 jobs:
   build_test:

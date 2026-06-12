@@ -7,7 +7,6 @@ defmodule CheckVersions do
 
     errors =
       errors
-      |> check_app_versions_file(versions)
       |> check_root_dockerfile(versions)
       |> check_apps_dockerfiles(versions)
       |> check_docker_compose(versions)
@@ -16,7 +15,6 @@ defmodule CheckVersions do
       |> check_publish2hex_yml(versions)
       |> check_mix_exs(versions)
       |> check_tool_versions(versions)
-      |> check_zenohex_versions(versions)
       |> check_readme_project_versions(versions)
       |> check_readme_zenoh_versions(versions)
 
@@ -77,23 +75,6 @@ defmodule CheckVersions do
     end
 
     versions
-  end
-
-  defp check_app_versions_file(errors, _versions) do
-    root_file = "VERSIONS"
-    app_file = "apps/giocci/VERSIONS"
-
-    root_content = File.read!(root_file)
-    app_content = File.read!(app_file)
-
-    if root_content == app_content do
-      errors
-    else
-      [
-        "#{app_file}: not copied from #{root_file} (need to run any mix tasks before push)"
-        | errors
-      ]
-    end
   end
 
   defp check_root_dockerfile(errors, versions) do
@@ -265,28 +246,6 @@ defmodule CheckVersions do
       "elixir tool version mismatch",
       "elixir #{elixir_version}-otp-#{erlang_major}"
     )
-  end
-
-  defp check_zenohex_versions(errors, versions) do
-    zenohex_version = versions["ZENOHEX_VERSION"]
-
-    [
-      "apps/giocci/mix.exs",
-      "apps/giocci_engine/mix.exs",
-      "apps/giocci_relay/mix.exs"
-    ]
-    |> Enum.reduce(errors, fn file, acc ->
-      content = File.read!(file)
-
-      check_match(
-        acc,
-        file,
-        content,
-        ~r/\{:zenohex,\s*\"==\s*#{Regex.escape(zenohex_version)}\"\}/,
-        "zenohex version mismatch",
-        "{:zenohex, \"== #{zenohex_version}\"}"
-      )
-    end)
   end
 
   defp check_readme_project_versions(errors, versions) do

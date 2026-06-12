@@ -4,6 +4,10 @@ updates:
     directory: "/"
     schedule:
       interval: "daily"
+    ignore:
+      # zenohex is pinned via VERSIONS and must be updated together with
+      # ZENOH_VERSION (Zenoh daemon) and tested manually due to native Rust components.
+      - dependency-name: "zenohex"
   - package-ecosystem: github-actions
     directory: "/"
     schedule:

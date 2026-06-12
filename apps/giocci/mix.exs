@@ -28,12 +28,30 @@ defmodule Giocci.MixProject do
     ]
   end
 
+  def releases do
+    [
+      giocci: [
+        include_executables_for: [:unix],
+        applications: [giocci: :permanent],
+        config_providers: [
+          {Config.Reader, {:system, "RELEASE_ROOT", "/giocci.exs"}}
+        ]
+      ]
+    ]
+  end
+
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:zenohex, "== 0.9.0"},
+      {:zenohex, "== #{zenohex_version()}"},
       {:mock, "~> 0.3.0", only: :test},
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false}
+    ]
+  end
+
+  defp aliases do
+    [
+      test: ["test --no-start"]
     ]
   end
 
@@ -57,46 +75,61 @@ defmodule Giocci.MixProject do
     ]
   end
 
-  defp aliases do
-    [
-      test: ["test --no-start"]
-    ]
+  defp version do
+    local_versions = Path.join(__DIR__, "VERSIONS")
+    parent_versions = Path.join([__DIR__, "../..", "VERSIONS"])
+
+    read_version(local_versions) ||
+      read_version(parent_versions) ||
+      fallback_version(local_versions)
   end
 
-  defp version do
-    versions_file = "VERSIONS"
-    versions_file_header = "version manifest for giocci_platform"
-    versions_path = Path.join([__DIR__, versions_file])
-    parent_versions = Path.join([__DIR__, "../..", versions_file])
+  defp zenohex_version do
+    local_versions = Path.join(__DIR__, "VERSIONS")
+    parent_versions = Path.join([__DIR__, "../..", "VERSIONS"])
 
-    if File.exists?(parent_versions) do
-      content = File.read!(parent_versions)
+    read_version_key(local_versions, "ZENOHEX_VERSION") ||
+      read_version_key(parent_versions, "ZENOHEX_VERSION") ||
+      raise("ZENOHEX_VERSION not found in VERSIONS")
+  end
 
-      if String.contains?(content, versions_file_header) do
-        File.write!(versions_path, content)
-      end
+  defp read_version_key(path, key) do
+    if File.exists?(path) do
+      path
+      |> File.read!()
+      |> String.split("\n")
+      |> Enum.find_value(fn line ->
+        case String.split(line, "=", parts: 2) do
+          [^key, value] -> String.trim(value)
+          _ -> nil
+        end
+      end)
     end
+  end
 
-    if File.exists?(versions_path) do
-      versions_path
+  defp read_version(path) do
+    if File.exists?(path) do
+      path
       |> File.read!()
       |> String.split("\n")
       |> Enum.find_value(fn
         "PROJECT_VERSION=" <> version -> String.trim(version)
-        _ -> false
-      end) || raise("PROJECT_VERSION not found in VERSIONS")
+        _ -> nil
+      end)
+    end
+  end
+
+  defp fallback_version(versions_path) do
+    if allow_missing_versions?() do
+      fallback_version = "0.0.0"
+
+      IO.warn(
+        "VERSIONS file not found at #{versions_path}; using fallback version #{fallback_version}"
+      )
+
+      fallback_version
     else
-      if allow_missing_versions?() do
-        fallback_version = "0.0.0"
-
-        IO.warn(
-          "VERSIONS file not found at #{versions_path}; using fallback version #{fallback_version}"
-        )
-
-        fallback_version
-      else
-        raise("VERSIONS file not found at #{versions_path}")
-      end
+      raise("VERSIONS file not found at #{versions_path}")
     end
   end
 
@@ -105,17 +138,5 @@ defmodule Giocci.MixProject do
       System.get_env("DEPENDABOT") == "true" ||
       (System.get_env("GITHUB_ACTIONS") == "true" &&
          System.get_env("GITHUB_ACTOR") == "dependabot[bot]")
-  end
-
-  def releases do
-    [
-      giocci: [
-        include_executables_for: [:unix],
-        applications: [giocci: :permanent],
-        config_providers: [
-          {Config.Reader, {:system, "RELEASE_ROOT", "/giocci.exs"}}
-        ]
-      ]
-    ]
   end
 end

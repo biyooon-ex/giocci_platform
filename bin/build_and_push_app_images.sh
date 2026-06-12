@@ -14,6 +14,7 @@ Build and push Docker images for specified services.
 
 Options:
   --dry-run     Build images without pushing to registry
+  --load        Build images and load into local Docker daemon
   -h, --help    Show this help message
 
 Available services:
@@ -26,8 +27,10 @@ Available services:
 Examples:
   $0 all                      # Build and push all services
   $0 --dry-run all            # Build all services without pushing
+  $0 --load all               # Build all services and load into local Docker daemon
   $0 zenohd                   # Build and push only zenohd
   $0 --dry-run giocci zenohd  # Build giocci and zenohd without pushing
+  $0 --load giocci zenohd     # Build giocci and zenohd and load locally
 
 EOF
   exit 1
@@ -35,6 +38,7 @@ EOF
 
 # Parse arguments
 DRY_RUN=false
+LOAD=false
 SERVICES=()
 
 while [[ $# -gt 0 ]]; do
@@ -44,6 +48,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --dry-run)
       DRY_RUN=true
+      shift
+      ;;
+    --load)
+      LOAD=true
       shift
       ;;
     *)
@@ -115,6 +123,8 @@ build_service() {
   
   if [[ "$DRY_RUN" == "true" ]]; then
     docker compose -f "$compose_file" build "$service_name"
+  elif [[ "$LOAD" == "true" ]]; then
+    docker compose -f "$compose_file" build --load "$service_name"
   else
     docker compose -f "$compose_file" build --push "$service_name"
   fi
@@ -124,6 +134,8 @@ build_service() {
 for service in "${SERVICES[@]}"; do
   if [[ "$DRY_RUN" == "true" ]]; then
     echo "Building (dry-run): ${service}"
+  elif [[ "$LOAD" == "true" ]]; then
+    echo "Building and loading locally: ${service}"
   else
     echo "Building and pushing: ${service}"
   fi
@@ -146,6 +158,8 @@ done
 
 if [[ "$DRY_RUN" == "true" ]]; then
   echo "Successfully built (without pushing): ${SERVICES[*]}"
+elif [[ "$LOAD" == "true" ]]; then
+  echo "Successfully built and loaded locally: ${SERVICES[*]}"
 else
   echo "Successfully built and pushed: ${SERVICES[*]}"
 fi

@@ -85,7 +85,7 @@ This script:
 
 When creating a new tag or release, `apps/giocci` (the client API library) is automatically published to Hex.pm as a Hex package by `./github/workflows/publish2hex.yml`.
 
-If a issue occurs and we need to run this manually, proceed as follows to publish the giocci package to Hex.pm from the local:
+If an issue occurs and we need to run this manually, proceed as follows to publish the giocci package to Hex.pm from the local:
 
 ```bash
 ./bin/publish_giocci_to_hex.sh

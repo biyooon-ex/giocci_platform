@@ -12,7 +12,8 @@ defmodule Giocci.Inspect do
   A responsive relay with no matching records returns `{:ok, []}`; a
   communication failure does not. Remote queries require a compatible
   relay or engine. Module queries describe saved relay BEAMs, not engine
-  distribution or execution.
+  distribution or execution. Multiple responses to the same inspection key
+  are reported as an error rather than selecting one responder.
 
   `relay_info/2` and `engine_info/2` return `:name`, `:giocci_version`,
   `:elixir_version`, `:otp_release`, `:system_architecture`, `:uptime_ms`
@@ -198,7 +199,10 @@ defmodule Giocci.Inspect do
       measurements: %{}
     }
 
-    case Utils.zenohex_get(session_id, key, timeout, term, record_measurements: false) do
+    case Utils.zenohex_get(session_id, key, timeout, term,
+           record_measurements: false,
+           consolidation: :none
+         ) do
       {:ok, {:ok, %{data: value, measurements: _measurements}}} ->
         decode_value(operation, value, module)
 

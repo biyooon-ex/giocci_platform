@@ -471,6 +471,24 @@ defmodule GiocciIntegrationTestTest do
                String.starts_with?(reason, "timeout:")
     end
 
+    test "multiple queryables on the same inspection key report an ambiguous reply" do
+      setup_relay_and_client()
+      key = "giocci/inspect/relay/#{@relay_name}"
+
+      {:ok, queryable_id} =
+        Zenohex.Session.declare_queryable(Giocci.SessionManager.session_id(), key)
+
+      task = Task.async(fn -> Giocci.Inspect.list_engines(@relay_name, timeout: 1_000) end)
+      assert_receive %Zenohex.Query{key_expr: ^key, zenoh_query: query}, 1_000
+
+      {:ok, payload} = Giocci.Utils.encode({:ok, %{data: [], measurements: %{}}})
+      assert :ok = Zenohex.Query.reply(query, key, payload)
+
+      assert {:error, reason} = Task.await(task, 1_500)
+      assert reason == "zenohex_error: expected one reply for '#{key}', got 2"
+      assert :ok = Zenohex.Queryable.undeclare(queryable_id)
+    end
+
     test "a key prefix containing inspect preserves ordinary registration and save results" do
       prefix = "tenant/inspect/demo"
       previous_client_prefix = Application.get_env(:giocci, :key_prefix)

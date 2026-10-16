@@ -29,7 +29,8 @@ defmodule Giocci.InspectTest do
                          key,
                          timeout,
                          %{data: %{client_name: "client"}},
-                         record_measurements: false ->
+                         record_measurements: false,
+                         consolidation: :none ->
            send(test_pid, {:queried, key, timeout})
 
            case Path.basename(key) do
@@ -61,7 +62,7 @@ defmodule Giocci.InspectTest do
       {Giocci.SessionManager, [], [session_id: fn -> :dummy_session_id end]},
       {Giocci.Utils, [],
        [
-         zenohex_get: fn _, key, _, _, record_measurements: false ->
+         zenohex_get: fn _, key, _, _, record_measurements: false, consolidation: :none ->
            if String.ends_with?(key, "relay-a") do
              {:ok, {:ok, %{data: false, measurements: %{}}}}
            else
@@ -89,7 +90,8 @@ defmodule Giocci.InspectTest do
                          key,
                          _,
                          %{data: %{operation: operation}},
-                         record_measurements: false ->
+                         record_measurements: false,
+                         consolidation: :none ->
            send(test_pid, {key, operation})
            {:ok, {:ok, %{data: :pong, measurements: %{}}}}
          end
@@ -111,25 +113,31 @@ defmodule Giocci.InspectTest do
       {Giocci.SessionManager, [], [session_id: fn -> :dummy_session_id end]},
       {Giocci.Utils, [],
        [
-         zenohex_get: fn _, _, _, %{data: %{operation: operation}}, record_measurements: false ->
-           value =
-             case operation do
-               :list_modules ->
-                 [module_name]
+         zenohex_get: fn
+           _,
+           _,
+           _,
+           %{data: %{operation: operation}},
+           record_measurements: false,
+           consolidation: :none ->
+             value =
+               case operation do
+                 :list_modules ->
+                   [module_name]
 
-               :list_functions ->
-                 [{function_name, 0}]
+                 :list_functions ->
+                   [{function_name, 0}]
 
-               :module_info ->
-                 %{
-                   "module" => module_name,
-                   "beam_sha256" => String.duplicate("a", 64),
-                   "beam_size_bytes" => 10,
-                   "saved_at" => "2026-10-16T12:00:00Z"
-                 }
-             end
+                 :module_info ->
+                   %{
+                     "module" => module_name,
+                     "beam_sha256" => String.duplicate("a", 64),
+                     "beam_size_bytes" => 10,
+                     "saved_at" => "2026-10-16T12:00:00Z"
+                   }
+               end
 
-           {:ok, {:ok, %{data: value, measurements: %{}}}}
+             {:ok, {:ok, %{data: value, measurements: %{}}}}
          end
        ]}
     ]) do

@@ -6,7 +6,9 @@ defmodule Giocci.Utils do
 
     {:ok, payload} = encode(maybe_add_measurements(key, send_term, record_measurements?, :send))
 
-    case Zenohex.Session.get(session_id, key, timeout, payload: payload) do
+    query_opts = [payload: payload] ++ Keyword.take(opts, [:consolidation])
+
+    case Zenohex.Session.get(session_id, key, timeout, query_opts) do
       {:ok, [%Zenohex.Sample{payload: payload}]} ->
         case decode(payload) do
           {:ok, recv_term} ->

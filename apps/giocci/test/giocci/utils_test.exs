@@ -55,4 +55,29 @@ defmodule Giocci.UtilsTest do
                )
     end
   end
+
+  test "only inspection queries disable consolidation" do
+    test_pid = self()
+
+    with_mock Zenohex.Session,
+      get: fn _, _, _, opts ->
+        send(test_pid, {:query_options, opts})
+        {:ok, []}
+      end do
+      term = %{data: %{operation: :list_engines}, measurements: %{}}
+
+      assert {:error, _} =
+               Giocci.Utils.zenohex_get(:session, "giocci/register/client/relay", 100, term)
+
+      assert_receive {:query_options, [payload: _]}
+
+      assert {:error, _} =
+               Giocci.Utils.zenohex_get(:session, "giocci/inspect/relay/name", 100, term,
+                 record_measurements: false,
+                 consolidation: :none
+               )
+
+      assert_receive {:query_options, [payload: _, consolidation: :none]}
+    end
+  end
 end

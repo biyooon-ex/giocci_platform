@@ -22,12 +22,15 @@ defmodule Giocci.Worker do
     timeout = Keyword.get(opts, :timeout, @default_timeout)
     opts = Keyword.put(opts, :timeout, timeout)
 
-    module_object_code = :code.get_object_code(module)
+    case Giocci.DynamicModule.object_code(module) do
+      :error ->
+        {:error, "get_object_code_failed"}
 
-    if module_object_code == :error do
-      {:error, "get_object_code_failed"}
-    else
-      GenServer.call(@name, {:save_module, relay_name, module_object_code, opts}, :infinity)
+      {:error, _reason} = error ->
+        error
+
+      module_object_code ->
+        GenServer.call(@name, {:save_module, relay_name, module_object_code, opts}, :infinity)
     end
   end
 

@@ -16,6 +16,11 @@ defmodule Giocci do
   @doc """
   Save a module to the relay.
 
+  For modules compiled without a BEAM file, use `Giocci.DynamicModule` inside
+  the module definition. Redefinitions must use it again; otherwise this
+  function returns `{:error, "dynamic_module_stale"}` instead of sending the
+  previously retained BEAM.
+
   Options:
     - `:timeout` - Client call timeout in milliseconds.
     - `:measure_to` - When set to a pid, sends measurement timestamps as `{:giocci_measurements, timestamps}` to that process.

@@ -2,6 +2,7 @@ defmodule Giocci.Worker do
   @moduledoc false
 
   use GenServer
+  require Logger
 
   alias Giocci.ExecFuncAsyncStore
   alias Giocci.Utils
@@ -129,6 +130,13 @@ defmodule Giocci.Worker do
            :ok <- validate_module_found(module_object_code),
            key <- Path.join(key_prefix, "giocci/save_module/client/#{relay_name}"),
            {:ok, term_from_relay} <- Utils.zenohex_get(session_id, key, timeout, term_to_relay) do
+        if term_from_relay == {:error, "client_not_registered"} do
+          Logger.warning(
+            "Relay #{inspect(relay_name)} may have lost the client registration (for example after a restart). " <>
+              "Run Giocci.register_client(#{inspect(relay_name)}) before calling save_module again."
+          )
+        end
+
         # NOTE: term_from_relay is a list of {:ok, _} or {:error, _} tuples.
         term_from_relay
       end

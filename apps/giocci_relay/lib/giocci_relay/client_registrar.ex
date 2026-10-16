@@ -13,6 +13,10 @@ defmodule GiocciRelay.ClientRegistrar do
     GenServer.call(@name, {:validate_registered, client_name})
   end
 
+  def registered?(client_name) do
+    GenServer.call(@name, {:registered?, client_name})
+  end
+
   def start_link(args) do
     GenServer.start_link(__MODULE__, args, name: @name)
   end
@@ -78,6 +82,10 @@ defmodule GiocciRelay.ClientRegistrar do
       end
 
     {:reply, result, state}
+  end
+
+  def handle_call({:registered?, client_name}, _from, state) do
+    {:reply, client_name in state.registered_clients, state}
   end
 
   defp extract(term) do

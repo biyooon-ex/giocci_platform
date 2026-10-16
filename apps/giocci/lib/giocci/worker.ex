@@ -48,6 +48,10 @@ defmodule Giocci.Worker do
     GenServer.call(@name, {:exec_func_async, relay_name, mfargs, server, opts}, :infinity)
   end
 
+  def inspection_info do
+    GenServer.call(@name, :inspection_info)
+  end
+
   def start_link(args) do
     GenServer.start_link(__MODULE__, args, name: @name)
   end
@@ -64,6 +68,10 @@ defmodule Giocci.Worker do
        key_prefix: key_prefix,
        registered_relays: []
      }}
+  end
+
+  def handle_call(:inspection_info, _from, state) do
+    {:reply, Map.take(state, [:client_name, :key_prefix, :registered_relays]), state}
   end
 
   def handle_call({:register_client, relay_name, opts}, _from, state) do

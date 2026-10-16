@@ -11,6 +11,16 @@ defmodule Giocci.Utils do
           error -> error
         end
 
+      {:ok, []} ->
+        {:error,
+         "connection_failed: No reply for '#{key}'. Please ensure the target component is running."}
+
+      {:ok, [%Zenohex.Query.ReplyError{} = reply_error]} ->
+        {:error, "connection_failed: Query failed on '#{key}' (Details: #{inspect(reply_error)})"}
+
+      {:ok, replies} ->
+        {:error, "zenohex_error: expected one reply for '#{key}', got #{length(replies)}"}
+
       {:error, :timeout} ->
         operation = extract_operation_description(key)
 
@@ -73,20 +83,34 @@ defmodule Giocci.Utils do
   end
 
   defp add_send_measurements(key, %{measurements: measurements} = send_term) do
-    key =
-      cond do
-        String.contains?(key, "/register/client/") -> :client_send_timestamp_to_relay
-        String.contains?(key, "/save_module/client/") -> :client_send_timestamp_to_relay
-        String.contains?(key, "/inquiry_engine/client/") -> :client_send_timestamp_to_relay
-        String.contains?(key, "/exec_func/client/") -> :client_send_timestamp_to_engine
-        true -> raise "Unexpected condition reached"
-      end
+    if String.contains?(key, "/inspect/") do
+      send_term
+    else
+      timestamp_key =
+        cond do
+          String.contains?(key, "/register/client/") -> :client_send_timestamp_to_relay
+          String.contains?(key, "/save_module/client/") -> :client_send_timestamp_to_relay
+          String.contains?(key, "/inquiry_engine/client/") -> :client_send_timestamp_to_relay
+          String.contains?(key, "/exec_func/client/") -> :client_send_timestamp_to_engine
+          true -> raise "Unexpected condition reached"
+        end
 
-    measurements = Map.put(measurements, key, System.os_time(:microsecond))
-    %{send_term | measurements: measurements}
+      %{
+        send_term
+        | measurements: Map.put(measurements, timestamp_key, System.os_time(:microsecond))
+      }
+    end
   end
 
   defp add_recv_measurements(key, recv_term) do
+    if String.contains?(key, "/inspect/") do
+      recv_term
+    else
+      add_operation_recv_measurements(key, recv_term)
+    end
+  end
+
+  defp add_operation_recv_measurements(key, recv_term) do
     case recv_term do
       {:ok, %{data: data, measurements: measurements}} ->
         key =

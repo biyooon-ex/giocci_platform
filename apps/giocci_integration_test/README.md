@@ -24,3 +24,4 @@ This command automatically detects your environment and runs all integration tes
 - Function execution on remote engines
 - Asynchronous function execution
 - Error handling when components are unavailable
+- Client, relay, and engine inspection

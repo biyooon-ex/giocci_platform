@@ -7,6 +7,7 @@ defmodule GiocciRelay.Application do
 
   @impl true
   def start(_type, _args) do
+    started_at_ms = System.monotonic_time(:millisecond)
     zenoh_config_file_path = Application.get_env(:giocci_relay, :zenoh_config_file_path)
     relay_name = Application.fetch_env!(:giocci_relay, :relay_name)
     key_prefix = Application.get_env(:giocci_relay, :key_prefix, "")
@@ -33,6 +34,12 @@ defmodule GiocciRelay.Application do
        [
          relay_name: relay_name,
          key_prefix: key_prefix
+       ]},
+      {GiocciRelay.InspectHandler,
+       [
+         relay_name: relay_name,
+         key_prefix: key_prefix,
+         started_at_ms: started_at_ms
        ]}
     ]
 

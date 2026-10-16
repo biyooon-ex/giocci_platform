@@ -132,6 +132,21 @@ Example:
 Giocci.exec_func("giocci_relay", {MyModule, :add, [1, 2]}, timeout: 10_000)
 ```
 
+## Inspecting the platform
+
+Use `Giocci.Inspect` to check this client's Zenoh connection, relay and engine
+registrations, saved modules, runtime information, and ping responses.
+
+```elixir
+Giocci.Inspect.connection_info()
+Giocci.Inspect.list_relays()
+Giocci.Inspect.list_modules("giocci_relay")
+Giocci.Inspect.ping_engine("giocci_engine")
+```
+
+`list_relays/1` can return partial results with `:warn`. See the
+`Giocci.Inspect` API documentation for return values and query options.
+
 ## Running with Docker (for Testing)
 
 The Docker environment is provided for troubleshooting network connectivity issues between Giocci, GiocciRelay, and GiocciEngine.

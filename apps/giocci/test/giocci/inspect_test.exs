@@ -9,7 +9,7 @@ defmodule Giocci.InspectTest do
 
   test "list_relays returns no candidates without contacting the relay" do
     with_mock Giocci.Utils,
-      zenohex_get: fn _, _, _, _ -> flunk("unexpected remote query") end do
+      zenohex_get: fn _, _, _, _, _ -> flunk("unexpected remote query") end do
       assert {:ok, []} = Giocci.Inspect.list_relays()
     end
   end
@@ -25,7 +25,11 @@ defmodule Giocci.InspectTest do
       {Giocci.SessionManager, [], [session_id: fn -> :dummy_session_id end]},
       {Giocci.Utils, [],
        [
-         zenohex_get: fn _, key, timeout, %{data: %{client_name: "client"}} ->
+         zenohex_get: fn _,
+                         key,
+                         timeout,
+                         %{data: %{client_name: "client"}},
+                         record_measurements: false ->
            send(test_pid, {:queried, key, timeout})
 
            case Path.basename(key) do
@@ -57,7 +61,7 @@ defmodule Giocci.InspectTest do
       {Giocci.SessionManager, [], [session_id: fn -> :dummy_session_id end]},
       {Giocci.Utils, [],
        [
-         zenohex_get: fn _, key, _, _ ->
+         zenohex_get: fn _, key, _, _, record_measurements: false ->
            if String.ends_with?(key, "relay-a") do
              {:ok, {:ok, %{data: false, measurements: %{}}}}
            else
@@ -81,7 +85,11 @@ defmodule Giocci.InspectTest do
       {Giocci.SessionManager, [], [session_id: fn -> :dummy_session_id end]},
       {Giocci.Utils, [],
        [
-         zenohex_get: fn _, key, _, %{data: %{operation: operation}} ->
+         zenohex_get: fn _,
+                         key,
+                         _,
+                         %{data: %{operation: operation}},
+                         record_measurements: false ->
            send(test_pid, {key, operation})
            {:ok, {:ok, %{data: :pong, measurements: %{}}}}
          end
@@ -91,5 +99,63 @@ defmodule Giocci.InspectTest do
       assert rtt_ms >= 0
       assert_receive {"scope/giocci/inspect/engine/engine", :ping}
     end
+  end
+
+  test "remote module and function names stay strings without interning new atoms" do
+    module_name = "Elixir.UnloadedModule#{System.unique_integer([:positive])}"
+    function_name = "unloaded_function_#{System.unique_integer([:positive])}"
+    assert_raise ArgumentError, fn -> String.to_existing_atom(module_name) end
+    assert_raise ArgumentError, fn -> String.to_existing_atom(function_name) end
+
+    with_mocks([
+      {Giocci.SessionManager, [], [session_id: fn -> :dummy_session_id end]},
+      {Giocci.Utils, [],
+       [
+         zenohex_get: fn _, _, _, %{data: %{operation: operation}}, record_measurements: false ->
+           value =
+             case operation do
+               :list_modules ->
+                 [module_name]
+
+               :list_functions ->
+                 [{function_name, 0}]
+
+               :module_info ->
+                 %{
+                   "module" => module_name,
+                   "beam_sha256" => String.duplicate("a", 64),
+                   "beam_size_bytes" => 10,
+                   "saved_at" => "2026-10-16T12:00:00Z"
+                 }
+             end
+
+           {:ok, {:ok, %{data: value, measurements: %{}}}}
+         end
+       ]}
+    ]) do
+      assert {:ok, [^module_name]} = Giocci.Inspect.list_modules("relay")
+
+      assert {:ok, [{^function_name, 0}]} =
+               Giocci.Inspect.list_functions("relay", module_name)
+
+      assert {:ok, %{module: ^module_name}} = Giocci.Inspect.module_info("relay", module_name)
+      assert {:error, "unexpected_reply"} = Giocci.Inspect.module_info("relay", 123)
+    end
+
+    assert_raise ArgumentError, fn -> String.to_existing_atom(module_name) end
+    assert_raise ArgumentError, fn -> String.to_existing_atom(function_name) end
+  end
+
+  test "inspection_info waits for a busy worker beyond the default GenServer timeout" do
+    worker = Process.whereis(Giocci.Worker)
+    :ok = :sys.suspend(worker)
+
+    task = Task.async(fn -> Giocci.Worker.inspection_info() end)
+    Process.sleep(5_100)
+    pending = Task.yield(task, 0)
+
+    :ok = :sys.resume(worker)
+    assert pending == nil
+    assert %{client_name: "client"} = Task.await(task, 1_000)
   end
 end

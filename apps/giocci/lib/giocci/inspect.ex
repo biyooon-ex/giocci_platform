@@ -102,12 +102,14 @@ defmodule Giocci.Inspect do
   end
 
   @doc """
-  Returns the sorted, distinct module names saved at a relay under this
-  configured client name, or `{:ok, []}` if none are saved.
+  Returns the sorted, distinct module names as strings (for example,
+  `"Elixir.MyModule"`) saved at a relay under this configured client name,
+  or `{:ok, []}` if none are saved.
 
   The list is based on the relay's stored BEAMs, not the client's loaded
-  code. Other connections using the same client name share the stored
-  namespace.
+  code. Names can be passed directly to `list_functions/3` or
+  `module_info/3`. Other connections using the same client name share
+  the stored namespace.
   """
   def list_modules(relay, opts \\ []) do
     request(:relay, relay, :list_modules, nil, opts)
@@ -115,8 +117,10 @@ defmodule Giocci.Inspect do
 
   @doc """
   Returns the saved BEAM's public callable functions as sorted
-  `{name, arity}` tuples. Default-argument arities and public callbacks
-  are included; private functions, macros, `module_info/0,1`,
+  `{name, arity}` tuples with string names (for example, `{"hello", 0}`).
+  The module can be specified as an atom or a name returned by
+  `list_modules/2`. Default-argument arities and public callbacks are
+  included; private functions, macros, `module_info/0,1`,
   `__info__/1`, and `__struct__/0,1` are excluded. Other `__`-prefixed
   public functions are not excluded just because of their names.
 
@@ -129,8 +133,10 @@ defmodule Giocci.Inspect do
   end
 
   @doc """
-  Returns `%{module: module, beam_sha256: hash, beam_size_bytes: size,
+  Returns `%{module: name, beam_sha256: hash, beam_size_bytes: size,
   saved_at: date_time}` for this client's BEAM saved at the relay.
+  `:module` is a string even when the module argument is an atom; the
+  argument can also be a name returned by `list_modules/2`.
 
   `beam_sha256` is the lowercase hexadecimal SHA-256 of the entire BEAM,
   `beam_size_bytes` is its size in bytes, and `saved_at` is a UTC
@@ -192,7 +198,7 @@ defmodule Giocci.Inspect do
       measurements: %{}
     }
 
-    case Utils.zenohex_get(session_id, key, timeout, term) do
+    case Utils.zenohex_get(session_id, key, timeout, term, record_measurements: false) do
       {:ok, {:ok, %{data: value, measurements: _measurements}}} ->
         decode_value(operation, value, module)
 
@@ -215,17 +221,18 @@ defmodule Giocci.Inspect do
   end
 
   defp decode_value(:list_modules, modules, _module) when is_list(modules) do
-    decode_list(modules, fn name -> decode_atom(name) end)
+    if Enum.all?(modules, &is_binary/1), do: {:ok, modules}, else: {:error, "unexpected_reply"}
   end
 
   defp decode_value(:list_functions, functions, _module) when is_list(functions) do
-    decode_list(functions, fn
-      {name, arity} when is_integer(arity) and arity >= 0 ->
-        with {:ok, name} <- decode_atom(name), do: {:ok, {name, arity}}
-
-      _ ->
-        {:error, "unexpected_reply"}
-    end)
+    if Enum.all?(functions, fn
+         {name, arity} -> is_binary(name) and is_integer(arity) and arity >= 0
+         _ -> false
+       end) do
+      {:ok, functions}
+    else
+      {:error, "unexpected_reply"}
+    end
   end
 
   defp decode_value(
@@ -239,11 +246,12 @@ defmodule Giocci.Inspect do
          module
        )
        when is_binary(name) and is_binary(hash) and is_integer(size) and size >= 0 and
-              is_binary(saved_at) do
-    with true <- name == Atom.to_string(module),
+              is_binary(saved_at) and
+              (is_binary(module) or (is_atom(module) and not is_nil(module))) do
+    with true <- name == module_name(module),
          true <- String.match?(hash, ~r/\A[0-9a-f]{64}\z/),
          {:ok, date_time, 0} <- DateTime.from_iso8601(saved_at) do
-      {:ok, %{module: module, beam_sha256: hash, beam_size_bytes: size, saved_at: date_time}}
+      {:ok, %{module: name, beam_sha256: hash, beam_size_bytes: size, saved_at: date_time}}
     else
       _ -> {:error, "unexpected_reply"}
     end
@@ -286,27 +294,6 @@ defmodule Giocci.Inspect do
   defp decode_value(:ping, :pong, _module), do: {:ok, :pong}
   defp decode_value(_operation, _value, _module), do: {:error, "unexpected_reply"}
 
-  defp decode_list(values, decode) do
-    Enum.reduce_while(values, {:ok, []}, fn value, {:ok, decoded} ->
-      case decode.(value) do
-        {:ok, item} -> {:cont, {:ok, [item | decoded]}}
-        error -> {:halt, error}
-      end
-    end)
-    |> case do
-      {:ok, decoded} -> {:ok, Enum.reverse(decoded)}
-      error -> error
-    end
-  end
-
-  defp decode_atom(name) when is_binary(name) do
-    # Names travel as strings because the client decodes remote replies with [:safe].
-    if String.valid?(name) and String.length(name) <= 255 do
-      {:ok, String.to_atom(name)}
-    else
-      {:error, "unexpected_reply"}
-    end
-  end
-
-  defp decode_atom(_name), do: {:error, "unexpected_reply"}
+  defp module_name(module) when is_atom(module), do: Atom.to_string(module)
+  defp module_name(module) when is_binary(module), do: module
 end

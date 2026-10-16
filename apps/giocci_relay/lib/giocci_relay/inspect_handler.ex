@@ -67,11 +67,12 @@ defmodule GiocciRelay.InspectHandler do
          %{operation: :list_functions, client_name: client_name, module: module},
          _state
        )
-       when is_binary(client_name) and is_atom(module) and not is_nil(module) do
-    with {:ok, {{^module, beam, _filename}, _saved_at}} <-
+       when is_binary(client_name) and
+              (is_binary(module) or (is_atom(module) and not is_nil(module))) do
+    with {:ok, {{stored_module, beam, _filename}, _saved_at}} <-
            GiocciRelay.ModuleStore.fetch(client_name, module) do
       case :beam_lib.chunks(beam, [:exports]) do
-        {:ok, {^module, [exports: exports]}} ->
+        {:ok, {^stored_module, [exports: exports]}} ->
           functions =
             exports
             |> Enum.reject(&generated_export?/1)
@@ -91,14 +92,15 @@ defmodule GiocciRelay.InspectHandler do
          %{operation: :module_info, client_name: client_name, module: module},
          _state
        )
-       when is_binary(client_name) and is_atom(module) and not is_nil(module) do
-    with {:ok, {{^module, beam, _filename}, saved_at}} <-
+       when is_binary(client_name) and
+              (is_binary(module) or (is_atom(module) and not is_nil(module))) do
+    with {:ok, {{stored_module, beam, _filename}, saved_at}} <-
            GiocciRelay.ModuleStore.fetch(client_name, module) do
       case :beam_lib.chunks(beam, [:exports]) do
-        {:ok, {^module, _chunks}} ->
+        {:ok, {^stored_module, _chunks}} ->
           {:ok,
            %{
-             "module" => Atom.to_string(module),
+             "module" => Atom.to_string(stored_module),
              "beam_sha256" => :crypto.hash(:sha256, beam) |> Base.encode16(case: :lower),
              "beam_size_bytes" => byte_size(beam),
              "saved_at" => DateTime.to_iso8601(saved_at)

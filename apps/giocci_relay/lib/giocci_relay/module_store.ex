@@ -66,13 +66,13 @@ defmodule GiocciRelay.ModuleStore do
   def handle_call({:fetch, client_name, module}, _from, state) do
     result =
       case Enum.find(Map.get(state.modules, client_name, []), fn {name, _, _} ->
-             name == module
+             name == module or (is_binary(module) and Atom.to_string(name) == module)
            end) do
         nil ->
           {:error, "module_not_found"}
 
-        object_code ->
-          {:ok, {object_code, Map.fetch!(state.saved_at, {client_name, module})}}
+        {stored_module, _, _} = object_code ->
+          {:ok, {object_code, Map.fetch!(state.saved_at, {client_name, stored_module})}}
       end
 
     {:reply, result, state}

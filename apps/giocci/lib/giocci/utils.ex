@@ -1,14 +1,19 @@
 defmodule Giocci.Utils do
   @moduledoc false
 
-  def zenohex_get(session_id, key, timeout, send_term) do
-    {:ok, payload} = encode(add_send_measurements(key, send_term))
+  def zenohex_get(session_id, key, timeout, send_term, opts \\ []) do
+    record_measurements? = Keyword.get(opts, :record_measurements, true)
+
+    {:ok, payload} = encode(maybe_add_measurements(key, send_term, record_measurements?, :send))
 
     case Zenohex.Session.get(session_id, key, timeout, payload: payload) do
       {:ok, [%Zenohex.Sample{payload: payload}]} ->
         case decode(payload) do
-          {:ok, recv_term} -> {:ok, add_recv_measurements(key, recv_term)}
-          error -> error
+          {:ok, recv_term} ->
+            {:ok, maybe_add_measurements(key, recv_term, record_measurements?, :recv)}
+
+          error ->
+            error
         end
 
       {:ok, []} ->
@@ -82,35 +87,27 @@ defmodule Giocci.Utils do
     ArgumentError -> {:error, "decode_failed: payload may contain unknown atoms or unsafe terms"}
   end
 
-  defp add_send_measurements(key, %{measurements: measurements} = send_term) do
-    if String.contains?(key, "/inspect/") do
-      send_term
-    else
-      timestamp_key =
-        cond do
-          String.contains?(key, "/register/client/") -> :client_send_timestamp_to_relay
-          String.contains?(key, "/save_module/client/") -> :client_send_timestamp_to_relay
-          String.contains?(key, "/inquiry_engine/client/") -> :client_send_timestamp_to_relay
-          String.contains?(key, "/exec_func/client/") -> :client_send_timestamp_to_engine
-          true -> raise "Unexpected condition reached"
-        end
+  defp maybe_add_measurements(key, term, true, :send), do: add_send_measurements(key, term)
+  defp maybe_add_measurements(key, term, true, :recv), do: add_recv_measurements(key, term)
+  defp maybe_add_measurements(_key, term, false, _direction), do: term
 
-      %{
-        send_term
-        | measurements: Map.put(measurements, timestamp_key, System.os_time(:microsecond))
-      }
-    end
+  defp add_send_measurements(key, %{measurements: measurements} = send_term) do
+    timestamp_key =
+      cond do
+        String.contains?(key, "/register/client/") -> :client_send_timestamp_to_relay
+        String.contains?(key, "/save_module/client/") -> :client_send_timestamp_to_relay
+        String.contains?(key, "/inquiry_engine/client/") -> :client_send_timestamp_to_relay
+        String.contains?(key, "/exec_func/client/") -> :client_send_timestamp_to_engine
+        true -> raise "Unexpected condition reached"
+      end
+
+    %{
+      send_term
+      | measurements: Map.put(measurements, timestamp_key, System.os_time(:microsecond))
+    }
   end
 
   defp add_recv_measurements(key, recv_term) do
-    if String.contains?(key, "/inspect/") do
-      recv_term
-    else
-      add_operation_recv_measurements(key, recv_term)
-    end
-  end
-
-  defp add_operation_recv_measurements(key, recv_term) do
     case recv_term do
       {:ok, %{data: data, measurements: measurements}} ->
         key =

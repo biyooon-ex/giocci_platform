@@ -55,6 +55,9 @@ defmodule GiocciRelay.ModuleStoreTest do
     assert {:ok, {^module_object_code, %DateTime{time_zone: "Etc/UTC"}}} =
              GiocciRelay.ModuleStore.fetch("client-1", GiocciRelay)
 
+    assert {:ok, {^module_object_code, %DateTime{}}} =
+             GiocciRelay.ModuleStore.fetch("client-1", Atom.to_string(GiocciRelay))
+
     assert {:error, "module_not_found"} =
              GiocciRelay.ModuleStore.fetch("client-1", GiocciRelay.ModuleStore)
   end

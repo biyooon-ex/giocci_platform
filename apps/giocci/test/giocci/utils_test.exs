@@ -34,7 +34,8 @@ defmodule Giocci.UtilsTest do
                  :session,
                  "giocci/inspect/relay/missing",
                  100,
-                 %{data: %{operation: :list_engines}, measurements: %{}}
+                 %{data: %{operation: :list_engines}, measurements: %{}},
+                 record_measurements: false
                )
     end
   end
@@ -49,7 +50,8 @@ defmodule Giocci.UtilsTest do
                  :session,
                  "giocci/inspect/relay/duplicate",
                  100,
-                 %{data: %{operation: :list_engines}, measurements: %{}}
+                 %{data: %{operation: :list_engines}, measurements: %{}},
+                 record_measurements: false
                )
     end
   end

@@ -471,9 +471,47 @@ defmodule GiocciIntegrationTestTest do
                String.starts_with?(reason, "timeout:")
     end
 
+    test "a key prefix containing inspect preserves ordinary registration and save results" do
+      prefix = "tenant/inspect/demo"
+      previous_client_prefix = Application.get_env(:giocci, :key_prefix)
+      previous_relay_prefix = Application.get_env(:giocci_relay, :key_prefix)
+      :ok = Application.put_env(:giocci, :key_prefix, prefix)
+      :ok = Application.put_env(:giocci_relay, :key_prefix, prefix)
+
+      on_exit(fn ->
+        for {app, previous} <- [
+              {:giocci, previous_client_prefix},
+              {:giocci_relay, previous_relay_prefix}
+            ] do
+          if is_nil(previous) do
+            Application.delete_env(app, :key_prefix)
+          else
+            Application.put_env(app, :key_prefix, previous)
+          end
+        end
+      end)
+
+      setup_relay_and_client()
+      assert :ok = Giocci.register_client(@relay_name, measure_to: self())
+
+      assert_receive {:giocci_measurements,
+                      %{
+                        client_send_timestamp_to_relay: _,
+                        client_recv_timestamp_from_relay: _,
+                        client_to_relay: _
+                      }}
+
+      assert :ok = Giocci.save_module(@relay_name, GiocciIntegrationTest)
+      assert {:ok, [@relay_name]} = Giocci.Inspect.list_relays()
+
+      assert {:ok, ["Elixir.GiocciIntegrationTest"]} =
+               Giocci.Inspect.list_modules(@relay_name)
+    end
+
     test "saved module information and functions reflect the relay's BEAM, not loaded code" do
       setup_relay_and_client()
       module = GiocciIntegrationTest.InspectedModule
+      module_name = Atom.to_string(module)
       on_exit(fn -> :persistent_term.erase({Giocci.DynamicModule, module}) end)
       Code.compiler_options(ignore_module_conflict: true)
 
@@ -491,20 +529,20 @@ defmodule GiocciIntegrationTestTest do
       assert :ok = Giocci.register_client(@relay_name)
       assert {:ok, [@relay_name]} = Giocci.Inspect.list_relays()
       assert :ok = Giocci.save_module(@relay_name, module)
-      assert {:ok, [^module]} = Giocci.Inspect.list_modules(@relay_name)
+      assert {:ok, [^module_name]} = Giocci.Inspect.list_modules(@relay_name)
 
       :code.purge(module)
       assert :code.delete(module)
       assert :code.is_loaded(module) == false
 
-      assert {:ok, [{:__custom__, 0}, {:add, 1}, {:add, 2}]} =
+      assert {:ok, [{"__custom__", 0}, {"add", 1}, {"add", 2}]} =
                Giocci.Inspect.list_functions(@relay_name, module)
 
       assert :code.is_loaded(module) == false
 
       assert {:ok,
               %{
-                module: ^module,
+                module: ^module_name,
                 beam_sha256: hash,
                 beam_size_bytes: size,
                 saved_at: %DateTime{time_zone: "Etc/UTC"} = saved_at
@@ -520,11 +558,11 @@ defmodule GiocciIntegrationTestTest do
         end
         """)
 
-      assert {:ok, [{:__custom__, 0}, {:add, 1}, {:add, 2}]} =
-               Giocci.Inspect.list_functions(@relay_name, module)
+      assert {:ok, [{"__custom__", 0}, {"add", 1}, {"add", 2}]} =
+               Giocci.Inspect.list_functions(@relay_name, module_name)
 
       assert {:ok, %{beam_sha256: ^hash, saved_at: ^saved_at}} =
-               Giocci.Inspect.module_info(@relay_name, module)
+               Giocci.Inspect.module_info(@relay_name, module_name)
 
       [{^module, updated_beam}] =
         Code.compile_string("""
@@ -535,10 +573,10 @@ defmodule GiocciIntegrationTestTest do
         """)
 
       assert :ok = Giocci.save_module(@relay_name, module)
-      assert {:ok, [{:add, 2}]} = Giocci.Inspect.list_functions(@relay_name, module)
+      assert {:ok, [{"add", 2}]} = Giocci.Inspect.list_functions(@relay_name, module_name)
 
       assert {:ok, %{beam_sha256: updated_hash, saved_at: updated_at}} =
-               Giocci.Inspect.module_info(@relay_name, module)
+               Giocci.Inspect.module_info(@relay_name, module_name)
 
       assert updated_hash == Base.encode16(:crypto.hash(:sha256, updated_beam), case: :lower)
       assert updated_hash != hash
@@ -577,6 +615,7 @@ defmodule GiocciIntegrationTestTest do
 
     test "invalid stored BEAM is reported without changing stored state" do
       setup_relay_and_client()
+      module_name = Atom.to_string(GiocciIntegrationTest)
 
       assert :ok =
                GiocciRelay.ModuleStore.put(
@@ -584,15 +623,15 @@ defmodule GiocciIntegrationTestTest do
                  {GiocciIntegrationTest, <<1>>, ~c"invalid.beam"}
                )
 
-      assert {:ok, [GiocciIntegrationTest]} = Giocci.Inspect.list_modules(@relay_name)
+      assert {:ok, [^module_name]} = Giocci.Inspect.list_modules(@relay_name)
 
       assert {:error, "invalid_beam"} =
-               Giocci.Inspect.list_functions(@relay_name, GiocciIntegrationTest)
+               Giocci.Inspect.list_functions(@relay_name, module_name)
 
       assert {:error, "invalid_beam"} =
-               Giocci.Inspect.module_info(@relay_name, GiocciIntegrationTest)
+               Giocci.Inspect.module_info(@relay_name, module_name)
 
-      assert {:ok, [GiocciIntegrationTest]} = Giocci.Inspect.list_modules(@relay_name)
+      assert {:ok, [^module_name]} = Giocci.Inspect.list_modules(@relay_name)
     end
 
     test "module queries use only this client's saved module namespace" do
@@ -611,10 +650,12 @@ defmodule GiocciIntegrationTestTest do
 
       assert :ok = Giocci.register_client(@relay_name)
       assert :ok = Giocci.save_module(@relay_name, GiocciIntegrationTest)
-      assert {:ok, [GiocciIntegrationTest]} = Giocci.Inspect.list_modules(@relay_name)
 
-      assert {:ok, [{:add, 2}]} =
-               Giocci.Inspect.list_functions(@relay_name, GiocciIntegrationTest)
+      assert {:ok, ["Elixir.GiocciIntegrationTest"]} =
+               Giocci.Inspect.list_modules(@relay_name)
+
+      assert {:ok, [{"add", 2}]} =
+               Giocci.Inspect.list_functions(@relay_name, "Elixir.GiocciIntegrationTest")
     end
   end
 end

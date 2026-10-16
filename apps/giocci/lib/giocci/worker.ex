@@ -49,7 +49,7 @@ defmodule Giocci.Worker do
   end
 
   def inspection_info do
-    GenServer.call(@name, :inspection_info)
+    GenServer.call(@name, :inspection_info, :infinity)
   end
 
   def start_link(args) do

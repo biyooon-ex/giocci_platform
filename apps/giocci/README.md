@@ -62,6 +62,11 @@ Save an Elixir module to the relay (which distributes it to engines):
 :ok = Giocci.save_module("giocci_relay", MyModule)
 ```
 
+If the relay loses the client registration (for example after a restart),
+`save_module/3` returns `{:error, "client_not_registered"}` and logs a warning.
+Call `Giocci.register_client("giocci_relay")` again before retrying; the
+client does not re-register automatically.
+
 For a module defined interactively in IEx or Livebook, or compiled with
 `Code.compile_string/2` without writing a BEAM file, opt in to retaining its
 compiled BEAM:

@@ -1,5 +1,6 @@
 defmodule GiocciIntegrationTestTest do
   use ExUnit.Case
+  import ExUnit.CaptureLog
 
   @moduletag capture_log: true
 
@@ -624,8 +625,13 @@ defmodule GiocciIntegrationTestTest do
       assert {:error, [%{relay: @relay_name, reason: "client_not_registered"}]} =
                Giocci.Inspect.list_relays()
 
-      assert {:error, "client_not_registered"} =
-               Giocci.save_module(@relay_name, GiocciIntegrationTest)
+      log =
+        capture_log(fn ->
+          assert {:error, "client_not_registered"} =
+                   Giocci.save_module(@relay_name, GiocciIntegrationTest)
+        end)
+
+      assert log =~ ~s|Giocci.register_client("#{@relay_name}")|
 
       assert :ok = Giocci.register_client(@relay_name)
       assert {:ok, [@relay_name]} = Giocci.Inspect.list_relays()

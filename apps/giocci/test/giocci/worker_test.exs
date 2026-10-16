@@ -1,5 +1,6 @@
 defmodule Giocci.WorkerTest do
   use ExUnit.Case
+  import ExUnit.CaptureLog
   import Mock
 
   setup_with_mocks([
@@ -20,8 +21,44 @@ defmodule Giocci.WorkerTest do
   end
 
   test "save_module/3 returns error for unregistered relay" do
-    assert {:error, "relay_not_registered"} =
-             Giocci.Worker.save_module("missing-relay", Giocci.Worker)
+    assert capture_log(fn ->
+             assert {:error, "relay_not_registered"} =
+                      Giocci.Worker.save_module("missing-relay", Giocci.Worker)
+           end) == ""
+  end
+
+  test "save_module/3 warns when a registered relay loses its client registration",
+       %{worker_pid: pid} do
+    :sys.replace_state(pid, fn state -> %{state | registered_relays: ["relay-1"]} end)
+
+    with_mock Giocci.Utils,
+      zenohex_get: fn _, _, _, _ -> {:ok, {:error, "client_not_registered"}} end do
+      log =
+        capture_log(fn ->
+          assert {:error, "client_not_registered"} =
+                   Giocci.Worker.save_module("relay-1", Giocci.Worker)
+        end)
+
+      assert log =~ ~s(Relay "relay-1" may have lost the client registration)
+      assert log =~ ~s|Giocci.register_client("relay-1")|
+      assert log =~ "[warning]"
+    end
+  end
+
+  test "save_module/3 does not warn for other relay errors", %{worker_pid: pid} do
+    :sys.replace_state(pid, fn state -> %{state | registered_relays: ["relay-1"]} end)
+
+    for response <- [
+          {:ok, {:error, "module_not_found"}},
+          {:error, "timeout"},
+          {:error, "connection_failed"}
+        ] do
+      with_mock Giocci.Utils, zenohex_get: fn _, _, _, _ -> response end do
+        assert capture_log(fn ->
+                 assert {:error, _} = Giocci.Worker.save_module("relay-1", Giocci.Worker)
+               end) == ""
+      end
+    end
   end
 
   test "exec_func/3 returns error for unregistered relay" do

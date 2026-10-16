@@ -62,6 +62,28 @@ Save an Elixir module to the relay (which distributes it to engines):
 :ok = Giocci.save_module("giocci_relay", MyModule)
 ```
 
+For a module defined interactively in IEx or Livebook, or compiled with
+`Code.compile_string/2` without writing a BEAM file, opt in to retaining its
+compiled BEAM:
+
+```elixir
+defmodule MyDynamicModule do
+  use Giocci.DynamicModule
+
+  def add(a, b), do: a + b
+end
+
+:ok = Giocci.save_module("giocci_relay", MyDynamicModule)
+```
+
+Include `use Giocci.DynamicModule` each time the module is redefined. If it
+is omitted on redefinition, `save_module` returns
+`{:error, "dynamic_module_stale"}` rather than sending the previous BEAM.
+Without the opt-in or a BEAM file, it returns
+`{:error, "get_object_code_failed"}`. One BEAM per opted-in module is retained
+until the VM exits; redefining that module replaces the retained BEAM. Regular
+Mix modules need no opt-in.
+
 ### 3. Execute Function (Synchronous)
 
 Execute a function on a remote engine:

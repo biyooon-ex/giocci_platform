@@ -79,6 +79,34 @@ defmodule GiocciIntegrationTestTest do
     test "normal scenario" do
       assert_normal_scenario_works()
     end
+
+    test "dynamically compiled module is saved and updated" do
+      module = GiocciIntegrationTest.DynamicModule
+      Code.compiler_options(ignore_module_conflict: true)
+
+      [{^module, _beam}] =
+        Code.compile_string("""
+        defmodule #{inspect(module)} do
+          use Giocci.DynamicModule
+          def add(a, b), do: a + b
+        end
+        """)
+
+      assert :ok == Giocci.register_client(@relay_name)
+      assert :ok == Giocci.save_module(@relay_name, module)
+      assert 3 == Giocci.exec_func(@relay_name, {module, :add, [1, 2]})
+
+      [{^module, _updated_beam}] =
+        Code.compile_string("""
+        defmodule #{inspect(module)} do
+          use Giocci.DynamicModule
+          def add(a, b), do: a + b + 1
+        end
+        """)
+
+      assert :ok == Giocci.save_module(@relay_name, module)
+      assert 4 == Giocci.exec_func(@relay_name, {module, :add, [1, 2]})
+    end
   end
 
   describe "engine start timing" do
@@ -113,6 +141,39 @@ defmodule GiocciIntegrationTestTest do
   end
 
   describe "error cases" do
+    test "redefining a dynamic module without use does not replace the saved BEAM" do
+      setup_relay_and_client()
+      setup_engine()
+      module = GiocciIntegrationTest.StaleDynamicModule
+      Code.compiler_options(ignore_module_conflict: true)
+
+      [{^module, saved_beam}] =
+        Code.compile_string("""
+        defmodule #{inspect(module)} do
+          use Giocci.DynamicModule
+          def add(a, b), do: a + b
+        end
+        """)
+
+      assert :ok == Giocci.register_client(@relay_name)
+      assert :ok == Giocci.save_module(@relay_name, module)
+      assert 3 == Giocci.exec_func(@relay_name, {module, :add, [1, 2]})
+
+      [{^module, _untracked_beam}] =
+        Code.compile_string("""
+        defmodule #{inspect(module)} do
+          def add(a, b), do: a + b + 1
+        end
+        """)
+
+      assert 4 == apply(module, :add, [1, 2])
+      assert {:error, "dynamic_module_stale"} == Giocci.save_module(@relay_name, module)
+
+      # Client and engine share this VM, so local redefinition also changes the engine's loaded code.
+      assert {:ok, stored_modules} = GiocciRelay.ModuleStore.get()
+      assert [{^module, ^saved_beam, _filename}] = stored_modules[@client_name]
+    end
+
     test "relay not started - register_client fails" do
       :ok = Application.put_env(:giocci, :client_name, @client_name)
       {:ok, _} = Application.ensure_all_started(:giocci)

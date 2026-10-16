@@ -42,4 +42,91 @@ defmodule Giocci.WorkerTest do
     assert {:error, "get_object_code_failed"} =
              Giocci.Worker.save_module("relay-1", missing_module)
   end
+
+  test "save_module/3 sends dynamically compiled BEAM", %{worker_pid: pid} do
+    module = Module.concat(__MODULE__, Dynamic)
+    on_exit(fn -> :persistent_term.erase({Giocci.DynamicModule, module}) end)
+
+    [{^module, beam}] =
+      Code.compile_string("""
+      defmodule #{inspect(module)} do
+        use Giocci.DynamicModule
+        def version, do: 1
+      end
+      """)
+
+    assert :error == :code.get_object_code(module)
+
+    :sys.replace_state(pid, fn state ->
+      %{state | registered_relays: ["relay-1"]}
+    end)
+
+    test_pid = self()
+
+    with_mock Giocci.Utils,
+      zenohex_get: fn _session, _key, _timeout, %{data: %{module_object_code: object_code}} ->
+        send(test_pid, {:sent_object_code, object_code})
+        {:ok, {:ok, %{data: nil, measurements: %{}}}}
+      end do
+      assert :ok = Giocci.Worker.save_module("relay-1", module)
+      assert_receive {:sent_object_code, {^module, ^beam, filename}}
+      assert is_list(filename)
+    end
+  end
+
+  test "save_module/3 rejects a cached BEAM after redefinition without use" do
+    module = Module.concat(__MODULE__, Redefined)
+    on_exit(fn -> :persistent_term.erase({Giocci.DynamicModule, module}) end)
+    Code.compiler_options(ignore_module_conflict: true)
+
+    [{^module, old_beam}] =
+      Code.compile_string("""
+      defmodule #{inspect(module)} do
+        use Giocci.DynamicModule
+        def version, do: 1
+      end
+      """)
+
+    [{^module, _new_beam}] =
+      Code.compile_string("""
+      defmodule #{inspect(module)} do
+        def version, do: 2
+      end
+      """)
+
+    assert 2 == module.version()
+
+    assert {:error, "dynamic_module_stale"} =
+             Giocci.Worker.save_module("relay-1", module)
+
+    [{^module, latest_beam}] =
+      Code.compile_string("""
+      defmodule #{inspect(module)} do
+        use Giocci.DynamicModule
+        def version, do: 3
+      end
+      """)
+
+    assert latest_beam != old_beam
+    assert {^module, ^latest_beam, _filename} = Giocci.DynamicModule.object_code(module)
+  end
+
+  test "save_module/3 returns error for a dynamic module without use" do
+    module = Module.concat(__MODULE__, Untracked)
+
+    [{^module, _beam}] =
+      Code.compile_string("""
+      defmodule #{inspect(module)} do
+        def version, do: 1
+      end
+      """)
+
+    assert {:error, "get_object_code_failed"} =
+             Giocci.Worker.save_module("relay-1", module)
+  end
+
+  test "modules compiled to files still use the code path" do
+    assert Giocci.DynamicModule.object_code(Giocci.Worker) ==
+             :code.get_object_code(Giocci.Worker)
+  end
 end

@@ -3,8 +3,6 @@ defmodule GiocciPico.SessionManager do
 
   use GenServer
 
-  require Logger
-
   @name __MODULE__
 
   # API
@@ -27,7 +25,7 @@ defmodule GiocciPico.SessionManager do
         {:ok, %{session: session}}
 
       {:error, reason} ->
-        Logger.error("Failed to open Zenoh session: #{inspect(reason)}")
+        IO.inspect("Failed to open Zenoh session: #{inspect(reason)}")
         {:stop, {:zenoh_session_open_failed, reason}}
     end
   end

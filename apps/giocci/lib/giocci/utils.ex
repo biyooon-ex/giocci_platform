@@ -53,6 +53,7 @@ defmodule Giocci.Utils do
 
     cond do
       String.contains?(key, "/register/client/") -> "Registering client to relay '#{name}'"
+      String.contains?(key, "/unregister/client/") -> "Unregistering client from relay '#{name}'"
       String.contains?(key, "/save_module/client/") -> "Saving module via relay '#{name}'"
       String.contains?(key, "/inquiry_engine/client/") -> "Inquiring engine from relay '#{name}'"
       String.contains?(key, "/exec_func/client/") -> "Executing function on engine '#{name}'"
@@ -65,6 +66,7 @@ defmodule Giocci.Utils do
 
     cond do
       String.contains?(key, "/register/client/") -> "Relay '#{name}' may not be running"
+      String.contains?(key, "/unregister/client/") -> "Relay '#{name}' may not be running"
       String.contains?(key, "/save_module/client/") -> "Relay '#{name}' may not be running"
       String.contains?(key, "/inquiry_engine/client/") -> "Relay '#{name}' may not be running"
       String.contains?(key, "/exec_func/client/") -> "Engine '#{name}' may not be running"
@@ -97,6 +99,7 @@ defmodule Giocci.Utils do
     timestamp_key =
       cond do
         String.contains?(key, "/register/client/") -> :client_send_timestamp_to_relay
+        String.contains?(key, "/unregister/client/") -> :client_send_timestamp_to_relay
         String.contains?(key, "/save_module/client/") -> :client_send_timestamp_to_relay
         String.contains?(key, "/inquiry_engine/client/") -> :client_send_timestamp_to_relay
         String.contains?(key, "/exec_func/client/") -> :client_send_timestamp_to_engine
@@ -112,15 +115,9 @@ defmodule Giocci.Utils do
   defp add_recv_measurements(key, recv_term) do
     case recv_term do
       {:ok, %{data: data, measurements: measurements}} ->
-        key =
-          cond do
-            String.contains?(key, "/register/client/") -> :client_recv_timestamp_from_relay
-            String.contains?(key, "/inquiry_engine/client/") -> :client_recv_timestamp_from_relay
-            String.contains?(key, "/exec_func/client/") -> :client_recv_timestamp_from_engine
-            true -> raise "Unexpected condition reached"
-          end
+        measurements =
+          Map.put(measurements, recv_timestamp_key(key), System.os_time(:microsecond))
 
-        measurements = Map.put(measurements, key, System.os_time(:microsecond))
         {:ok, %{data: data, measurements: measurements}}
 
       {:ok, list} when is_list(list) ->
@@ -142,6 +139,16 @@ defmodule Giocci.Utils do
 
       recv_term ->
         recv_term
+    end
+  end
+
+  defp recv_timestamp_key(key) do
+    cond do
+      String.contains?(key, "/register/client/") -> :client_recv_timestamp_from_relay
+      String.contains?(key, "/unregister/client/") -> :client_recv_timestamp_from_relay
+      String.contains?(key, "/inquiry_engine/client/") -> :client_recv_timestamp_from_relay
+      String.contains?(key, "/exec_func/client/") -> :client_recv_timestamp_from_engine
+      true -> raise "Unexpected condition reached"
     end
   end
 end

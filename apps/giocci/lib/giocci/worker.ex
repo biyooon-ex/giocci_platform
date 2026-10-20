@@ -19,6 +19,13 @@ defmodule Giocci.Worker do
     GenServer.call(@name, {:register_client, relay_name, opts}, :infinity)
   end
 
+  def unregister_client(relay_name, opts \\ []) do
+    timeout = Keyword.get(opts, :timeout, @default_timeout)
+    opts = Keyword.put(opts, :timeout, timeout)
+
+    GenServer.call(@name, {:unregister_client, relay_name, opts}, :infinity)
+  end
+
   def save_module(relay_name, module, opts \\ []) do
     timeout = Keyword.get(opts, :timeout, @default_timeout)
     opts = Keyword.put(opts, :timeout, timeout)
@@ -103,6 +110,32 @@ defmodule Giocci.Worker do
     result = maybe_send_measurements(result, measure_to)
 
     {:reply, result, state}
+  end
+
+  def handle_call({:unregister_client, relay_name, opts}, _from, state) do
+    session_id = Giocci.SessionManager.session_id()
+    timeout = Keyword.fetch!(opts, :timeout)
+    measure_to = Keyword.get(opts, :measure_to)
+    key = Path.join(state.key_prefix, "giocci/unregister/client/#{relay_name}")
+    term_to_relay = %{data: %{client_name: state.client_name}, measurements: %{}}
+
+    {result, state} =
+      case Utils.zenohex_get(session_id, key, timeout, term_to_relay) do
+        {:ok, {:ok, %{data: nil, measurements: _} = reply}} ->
+          {{:ok, reply},
+           %{state | registered_relays: List.delete(state.registered_relays, relay_name)}}
+
+        {:ok, {:error, _} = error} ->
+          {error, state}
+
+        {:ok, _unexpected_reply} ->
+          {{:error, "unexpected_reply"}, state}
+
+        error ->
+          {error, state}
+      end
+
+    {:reply, maybe_send_measurements(result, measure_to), state}
   end
 
   def handle_call({:save_module, relay_name, module_object_code, opts}, _from, state) do

@@ -23,6 +23,7 @@ All components communicate over [Zenoh](https://zenoh.io/), a pub/sub/query prot
 
 An Elixir library that allows applications to:
 - Register with a relay
+- Explicitly unregister from a relay without deleting saved modules
 - Save Elixir modules to remote engines
 - Execute functions synchronously or asynchronously
 
@@ -91,6 +92,7 @@ This platform communicates over Zenohex (Zenoh) using Query/Reply and Pub/Sub pa
 ### Key Map
 
 - Client registration: `giocci/register/client/{relay_name}`
+- Client unregistration: `giocci/unregister/client/{relay_name}`
 - Engine registration: `giocci/register/engine/{relay_name}`
 - Save module (Client -> Relay): `giocci/save_module/client/{relay_name}`
 - Distribute module (Relay -> Engine): `giocci/save_module/relay/{engine_name}`
@@ -180,6 +182,19 @@ sequenceDiagram
   Engine->>Engine: exec and build result
   Engine->>Client: Put giocci/exec_func_async/engine/{client}
   Client->>Client: send {:giocci, result}
+```
+
+#### 6) Client Unregistration
+
+```mermaid
+sequenceDiagram
+  participant Client
+  participant Relay
+
+  Client->>Relay: Query giocci/unregister/client/{relay}
+  Relay->>Relay: remove client registration (keep saved modules)
+  Relay->>Client: Reply :ok
+  Client->>Client: remove relay from local registrations
 ```
 
 ### Notes

@@ -14,6 +14,22 @@ defmodule Giocci do
   defdelegate register_client(relay_name, opts \\ []), to: Giocci.Worker
 
   @doc """
+  Unregister this client's name from a relay without deleting saved modules.
+
+  An already unregistered name is treated as success. A failed request does
+  not remove the relay from this client's local registration list; retrying
+  is safe even if the relay processed the request before the reply was lost.
+  Other clients using the same name are also affected by unregistration.
+  Running executions are not cancelled or waited for.
+
+  Options:
+    - `:timeout` - Client call timeout in milliseconds.
+    - `:measure_to` - When set to a pid, sends measurement timestamps as `{:giocci_measurements, timestamps}` to that process.
+  """
+  @spec unregister_client(String.t(), keyword()) :: :ok | {:error, reason :: term()}
+  defdelegate unregister_client(relay_name, opts \\ []), to: Giocci.Worker
+
+  @doc """
   Save a module to the relay.
 
   For modules compiled without a BEAM file, use `Giocci.DynamicModule` inside

@@ -41,7 +41,8 @@ defmodule GiocciPico.MixProject do
     [
       {:exatomvm,
        git: "https://github.com/atomvm/exatomvm.git",
-       ref: "a99323a1054adda1ec00e9997bc41bc7317a3826"},
+       ref: "a99323a1054adda1ec00e9997bc41bc7317a3826",
+       override: true},
       {:zenohex_pico,
        git: "git@github.com:biyooon-ex/zenohex_pico.git",
        ref: "a758ed29af87413e5d320ac6a7776fab8778e5a0"}

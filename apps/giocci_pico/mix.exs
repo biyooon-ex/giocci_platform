@@ -5,13 +5,23 @@ defmodule GiocciPico.MixProject do
     [
       app: :giocci_pico,
       version: "0.1.0",
-      build_path: "../../_build",
-      config_path: "../../config/config.exs",
-      deps_path: "../../deps",
-      lockfile: "../../mix.lock",
+      build_path: "./_build",
+      config_path: "./config/config.exs",
+      deps_path: "./deps",
+      lockfile: "./mix.lock",
       elixir: "~> 1.19",
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+      atomvm: [
+        start: GiocciPico.Sample.Test,
+        flash_offset: 0x250000
+      ],
+      aliases: [
+        flash: [
+          "atomvm.packbeam",
+          "atomvm.esp32.flash --port /dev/ttyACM0 --baud 921600"
+        ]
+      ]
     ]
   end
 
@@ -25,9 +35,12 @@ defmodule GiocciPico.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      # {:dep_from_hexpm, "~> 0.3.0"},
-      # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"},
-      # {:sibling_app_in_umbrella, in_umbrella: true}
+      {:exatomvm,
+       git: "https://github.com/atomvm/exatomvm.git",
+       ref: "a99323a1054adda1ec00e9997bc41bc7317a3826"},
+      {:zenohex_pico,
+       git: "git@github.com:biyooon-ex/zenohex_pico.git",
+       ref: "a758ed29af87413e5d320ac6a7776fab8778e5a0"}
     ]
   end
 end

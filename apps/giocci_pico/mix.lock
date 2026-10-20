@@ -1,0 +1,6 @@
+%{
+  "elixir_make": {:hex, :elixir_make, "0.10.0", "16577e2583a79bb79237bbff349619ef5d80afffc07eac6e4faf0d00e2ddaf7d", [:mix], [], "hexpm", "dc1f09fb7fa68866b886abd5f0f3c83553b1a19a52359a899e92af1bb3b31982"},
+  "exatomvm": {:git, "https://github.com/atomvm/exatomvm.git", "a99323a1054adda1ec00e9997bc41bc7317a3826", [ref: "a99323a1054adda1ec00e9997bc41bc7317a3826"]},
+  "uf2tool": {:hex, :uf2tool, "1.1.0", "7091931234ca5a256b66ea691983867d51229798622d083f85c1ad779798a734", [:rebar3], [], "hexpm", "1a7e5ca7ef3d19c7a0b0acf3db804b3188e0980884acffa13fd57d733507b73d"},
+  "zenohex_pico": {:git, "git@github.com:biyooon-ex/zenohex_pico.git", "a758ed29af87413e5d320ac6a7776fab8778e5a0", [ref: "a758ed29af87413e5d320ac6a7776fab8778e5a0"]},
+}

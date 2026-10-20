@@ -41,6 +41,8 @@ Stop the engine:
 docker compose down giocci_engine
 ```
 
+On graceful shutdown (including `docker compose stop`), the engine asks its relay to unregister it before closing its Zenoh session. It waits up to 5000 ms for acknowledgment; if the relay is unavailable, it logs the failure and continues stopping. Abrupt termination cannot send this notification, so a stopped engine may still appear registered in that case.
+
 Restart the engine:
 ```bash
 docker compose restart giocci_engine

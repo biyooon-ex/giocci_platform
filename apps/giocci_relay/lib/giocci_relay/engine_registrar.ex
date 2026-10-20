@@ -32,14 +32,46 @@ defmodule GiocciRelay.EngineRegistrar do
     {:ok, register_engine_queryable_id} =
       Zenohex.Session.declare_queryable(session_id, register_engine_key)
 
+    unregister_engine_key = Path.join(key_prefix, "giocci/unregister/engine/#{relay_name}")
+
+    {:ok, unregister_engine_queryable_id} =
+      Zenohex.Session.declare_queryable(session_id, unregister_engine_key)
+
     {:ok,
      %{
        relay_name: relay_name,
        key_prefix: key_prefix,
        register_engine_key: register_engine_key,
        register_engine_queryable_id: register_engine_queryable_id,
+       unregister_engine_key: unregister_engine_key,
+       unregister_engine_queryable_id: unregister_engine_queryable_id,
        registered_engines: []
      }}
+  end
+
+  def handle_info(
+        %Zenohex.Query{
+          key_expr: unregister_engine_key,
+          payload: binary,
+          zenoh_query: zenoh_query
+        },
+        %{unregister_engine_key: unregister_engine_key} = state
+      ) do
+    {result, state} =
+      with {:ok, term_from_engine} <- Utils.decode(binary),
+           {:ok, engine_name} <- extract(term_from_engine.data) do
+        Logger.debug("#{inspect(engine_name)} unregistered.")
+
+        {{:ok, %{data: nil, measurements: term_from_engine.measurements}},
+         %{state | registered_engines: List.delete(state.registered_engines, engine_name)}}
+      else
+        error ->
+          Logger.error("Engine unregistration failed by #{inspect(error)}.")
+          {error, state}
+      end
+
+    :ok = Utils.zenohex_reply(zenoh_query, unregister_engine_key, result)
+    {:noreply, state}
   end
 
   def handle_info(

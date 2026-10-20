@@ -8,11 +8,29 @@ defmodule GiocciEngine.EngineRegistrar do
   alias GiocciEngine.Utils
 
   @name __MODULE__
+  @unregister_timeout 5_000
 
   # API
 
   def start_link(args) do
     GenServer.start_link(__MODULE__, args, name: @name)
+  end
+
+  def unregister do
+    engine_name = Application.fetch_env!(:giocci_engine, :engine_name)
+    relay_name = Application.fetch_env!(:giocci_engine, :relay_name)
+    key_prefix = Application.get_env(:giocci_engine, :key_prefix, "")
+    session_id = GiocciEngine.SessionManager.session_id()
+    key = Path.join(key_prefix, "giocci/unregister/engine/#{relay_name}")
+    term_to_relay = %{data: %{engine_name: engine_name}, measurements: %{}}
+
+    case Utils.zenohex_get(session_id, key, @unregister_timeout, term_to_relay) do
+      {:ok, {:ok, %{data: nil}}} ->
+        Logger.info("#{inspect(engine_name)} unregistered.")
+
+      error ->
+        Logger.warning("Engine unregistration failed by #{inspect(error)}.")
+    end
   end
 
   def init(args) do

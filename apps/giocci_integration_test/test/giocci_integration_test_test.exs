@@ -11,8 +11,6 @@ defmodule GiocciIntegrationTestTest do
   @giocci_relay_zenoh_config_path Path.expand("../../giocci_relay/config/zenoh.json5", __DIR__)
   @giocci_engine_zenoh_config_path Path.expand("../../giocci_engine/config/zenoh.json5", __DIR__)
 
-  # Timeout for waiting engine response after it's stopped
-  @engine_stopped_timeout 1000
   # Timeout for async message delivery
   @async_message_timeout 1000
 
@@ -50,6 +48,16 @@ defmodule GiocciIntegrationTestTest do
     Application.delete_env(:giocci_engine, :engine_name)
     Application.delete_env(:giocci_engine, :relay_name)
     :ok
+  end
+
+  defp unregister_engine(engine_name) do
+    key = "giocci/unregister/engine/#{@relay_name}"
+    payload = :erlang.term_to_binary(%{data: %{engine_name: engine_name}, measurements: %{}})
+
+    {:ok, [%Zenohex.Sample{payload: reply}]} =
+      Zenohex.Session.get(Giocci.SessionManager.session_id(), key, 5_000, payload: payload)
+
+    :erlang.binary_to_term(reply)
   end
 
   defp assert_normal_scenario_works do
@@ -204,7 +212,7 @@ defmodule GiocciIntegrationTestTest do
                Giocci.exec_func(@relay_name, {GiocciIntegrationTest, :add, [1, 2]})
     end
 
-    test "engine registered then stopped - exec_func fails" do
+    test "engine registered then stopped is removed from selection and registers again on restart" do
       setup_relay_and_client()
       setup_engine()
 
@@ -217,19 +225,55 @@ defmodule GiocciIntegrationTestTest do
       # Stop engine manually (on_exit will handle cleanup if this fails)
       cleanup_engine()
 
-      # Engine is no longer available - Zenoh channel is closed
-      result =
-        Giocci.exec_func(@relay_name, {GiocciIntegrationTest, :add, [1, 2]},
-          timeout: @engine_stopped_timeout
-        )
+      assert [] == GiocciRelay.EngineRegistrar.registered_engines()
+      assert {:ok, []} == Giocci.Inspect.list_engines(@relay_name)
 
-      assert {:error, error_msg} = result
+      assert {:ok, [GiocciIntegrationTest]} ==
+               GiocciRelay.ModuleStore.list(@client_name)
 
-      assert String.starts_with?(error_msg, "connection_failed: "),
-             "Expected connection_failed after engine stopped but got: #{inspect(result)}"
+      assert {:error, "engine_not_registered"} ==
+               Giocci.exec_func(@relay_name, {GiocciIntegrationTest, :add, [1, 2]})
 
-      assert String.contains?(error_msg, "may not be running"),
-             "Expected 'may not be running' message but got: #{inspect(result)}"
+      setup_engine()
+      assert {:ok, [@engine_name]} == Giocci.Inspect.list_engines(@relay_name)
+      assert 3 == Giocci.exec_func(@relay_name, {GiocciIntegrationTest, :add, [1, 2]})
+    end
+
+    test "unregistering an unknown or already removed engine succeeds without removing others" do
+      setup_relay_and_client()
+      setup_engine()
+
+      assert :ok == Giocci.register_client(@relay_name)
+      assert :ok == Giocci.save_module(@relay_name, GiocciIntegrationTest)
+
+      assert {:ok, %{data: nil}} = unregister_engine("unknown_engine")
+      assert {:ok, [@engine_name]} == Giocci.Inspect.list_engines(@relay_name)
+
+      cleanup_engine()
+      assert {:ok, %{data: nil}} = unregister_engine(@engine_name)
+      assert {:ok, []} == Giocci.Inspect.list_engines(@relay_name)
+      assert {:ok, [GiocciIntegrationTest]} == GiocciRelay.ModuleStore.list(@client_name)
+    end
+
+    test "engine stops within a bounded time when relay does not reply to unregistration" do
+      setup_relay_and_client()
+      setup_engine()
+
+      :ok = :sys.suspend(GiocciRelay.EngineRegistrar)
+
+      try do
+        log =
+          capture_log(fn ->
+            {elapsed_us, :ok} = :timer.tc(fn -> cleanup_engine() end)
+            assert elapsed_us >= 4_000_000
+            assert elapsed_us < 8_000_000
+          end)
+
+        assert log =~ "Engine unregistration failed"
+        assert log =~ "timeout:"
+      after
+        :ok = :sys.resume(GiocciRelay.EngineRegistrar)
+      end
     end
   end
 
@@ -465,7 +509,7 @@ defmodule GiocciIntegrationTestTest do
       assert {:ok, []} = Giocci.Inspect.list_relays()
 
       cleanup_engine()
-      assert {:ok, [@engine_name]} = Giocci.Inspect.list_engines(@relay_name)
+      assert {:ok, []} = Giocci.Inspect.list_engines(@relay_name)
       assert {:error, reason} = Giocci.Inspect.ping_engine(@engine_name, timeout: 250)
 
       assert String.starts_with?(reason, "connection_failed:") or

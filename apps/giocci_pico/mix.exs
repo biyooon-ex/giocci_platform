@@ -45,7 +45,8 @@ defmodule GiocciPico.MixProject do
        override: true},
       {:zenohex_pico,
        git: "git@github.com:biyooon-ex/zenohex_pico.git",
-       ref: "a758ed29af87413e5d320ac6a7776fab8778e5a0"}
+       ref: "a758ed29af87413e5d320ac6a7776fab8778e5a0"},
+      {:pythonx, "~> 0.4.0"}
     ]
   end
 end

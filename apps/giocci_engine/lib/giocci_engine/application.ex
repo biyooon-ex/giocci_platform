@@ -53,4 +53,10 @@ defmodule GiocciEngine.Application do
     opts = [strategy: :one_for_one, name: GiocciEngine.Supervisor]
     Supervisor.start_link(children, opts)
   end
+
+  @impl true
+  def prep_stop(state) do
+    GiocciEngine.EngineRegistrar.unregister()
+    state
+  end
 end

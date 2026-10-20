@@ -20,6 +20,9 @@ defmodule GiocciEngine.Utils do
 
         {:error,
          "connection_failed: #{target_info}. Please ensure the target component is running. (Details: #{inspect(reason)})"}
+
+      {:ok, replies} ->
+        {:error, "unexpected_reply: #{inspect(replies)}"}
     end
   end
 
@@ -39,6 +42,10 @@ defmodule GiocciEngine.Utils do
         relay_name = extract_target_name(key)
         "Registering engine to relay '#{relay_name}'"
 
+      String.contains?(key, "/unregister/engine/") ->
+        relay_name = extract_target_name(key)
+        "Unregistering engine from relay '#{relay_name}'"
+
       true ->
         "Operation on '#{key}'"
     end
@@ -46,7 +53,8 @@ defmodule GiocciEngine.Utils do
 
   defp extract_target_info(key) do
     cond do
-      String.contains?(key, "/register/engine/") ->
+      String.contains?(key, "/register/engine/") or
+          String.contains?(key, "/unregister/engine/") ->
         relay_name = extract_target_name(key)
         "Relay '#{relay_name}' may not be running"
 
@@ -93,7 +101,8 @@ defmodule GiocciEngine.Utils do
 
   defp add_send_measurements(key, %{measurements: measurements} = send_term) do
     key =
-      if String.contains?(key, "/register/engine/") do
+      if String.contains?(key, "/register/engine/") or
+           String.contains?(key, "/unregister/engine/") do
         :engine_send_timestamp_to_relay
       else
         raise "Unexpected condition reached"
@@ -105,7 +114,8 @@ defmodule GiocciEngine.Utils do
 
   defp add_recv_measurements(key, recv_term) do
     key =
-      if String.contains?(key, "/register/engine/") do
+      if String.contains?(key, "/register/engine/") or
+           String.contains?(key, "/unregister/engine/") do
         :engine_recv_timestamp_from_relay
       else
         raise "Unexpected condition reached"

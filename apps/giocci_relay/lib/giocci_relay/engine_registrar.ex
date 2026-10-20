@@ -32,14 +32,46 @@ defmodule GiocciRelay.EngineRegistrar do
     {:ok, register_engine_queryable_id} =
       Zenohex.Session.declare_queryable(session_id, register_engine_key)
 
+    unregister_engine_key = Path.join(key_prefix, "giocci/unregister/engine/#{relay_name}")
+
+    {:ok, unregister_engine_queryable_id} =
+      Zenohex.Session.declare_queryable(session_id, unregister_engine_key)
+
     {:ok,
      %{
        relay_name: relay_name,
        key_prefix: key_prefix,
        register_engine_key: register_engine_key,
        register_engine_queryable_id: register_engine_queryable_id,
+       unregister_engine_key: unregister_engine_key,
+       unregister_engine_queryable_id: unregister_engine_queryable_id,
        registered_engines: []
      }}
+  end
+
+  def handle_info(
+        %Zenohex.Query{
+          key_expr: unregister_engine_key,
+          payload: binary,
+          zenoh_query: zenoh_query
+        },
+        %{unregister_engine_key: unregister_engine_key} = state
+      ) do
+    {result, state} =
+      with {:ok, term_from_engine} <- Utils.decode(binary),
+           {:ok, {engine_name, measurements}} <- extract_unregister(term_from_engine) do
+        Logger.debug("#{inspect(engine_name)} unregistered.")
+
+        {{:ok, %{data: nil, measurements: measurements}},
+         %{state | registered_engines: List.delete(state.registered_engines, engine_name)}}
+      else
+        error ->
+          Logger.error("Engine unregistration failed by #{inspect(error)}.")
+          {error, state}
+      end
+
+    :ok = Utils.zenohex_reply(zenoh_query, unregister_engine_key, result)
+    {:noreply, state}
   end
 
   def handle_info(
@@ -114,6 +146,13 @@ defmodule GiocciRelay.EngineRegistrar do
   rescue
     MatchError -> {:error, "term_not_expected"}
   end
+
+  defp extract_unregister(%{data: %{engine_name: engine_name}, measurements: measurements})
+       when is_binary(engine_name) and is_map(measurements) do
+    {:ok, {engine_name, measurements}}
+  end
+
+  defp extract_unregister(_), do: {:error, "term_not_expected"}
 
   defp maybe_add_measurements(result, relay_recv_timestamp_from_engine) do
     case result do

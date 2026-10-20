@@ -103,11 +103,29 @@ defmodule MyServer do
 end
 ```
 
+### 5. Unregister Client
+
+Unregister this client name from a relay explicitly when it is no longer
+needed:
+
+```elixir
+:ok = Giocci.unregister_client("giocci_relay")
+```
+
+Unregistration is explicit and safe to repeat. It does not delete saved
+modules or unload them from engines. Register again with the same client name
+to resume saving and execution without re-saving modules; relay storage is in
+memory and does not survive a restart.
+
+Unregistering a name shared by multiple client instances affects all of them.
+See `Giocci.unregister_client/2` for failure and in-flight request behavior.
+
 ### Options
 
 All functions accept an optional `opts` keyword list:
 
 - `:timeout` - Request timeout in milliseconds (default: 5000)
+- `:measure_to` - PID to receive measurement timestamps as `{:giocci_measurements, timestamps}`
 
 Example:
 

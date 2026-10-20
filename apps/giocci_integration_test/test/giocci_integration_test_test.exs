@@ -64,6 +64,16 @@ defmodule GiocciIntegrationTestTest do
     :erlang.binary_to_term(reply)
   end
 
+  defp client_registration_request(operation, client_name) do
+    key = "giocci/#{operation}/client/#{@relay_name}"
+    payload = :erlang.term_to_binary(%{data: %{client_name: client_name}, measurements: %{}})
+
+    {:ok, [%Zenohex.Sample{payload: reply}]} =
+      Zenohex.Session.get(Giocci.SessionManager.session_id(), key, 5_000, payload: payload)
+
+    :erlang.binary_to_term(reply)
+  end
+
   defp assert_normal_scenario_works do
     assert :ok == Giocci.register_client(@relay_name)
     assert :ok == Giocci.save_module(@relay_name, GiocciIntegrationTest)
@@ -91,6 +101,88 @@ defmodule GiocciIntegrationTestTest do
 
     test "normal scenario" do
       assert_normal_scenario_works()
+    end
+
+    test "unregistration preserves modules and requires re-registration for save and execution" do
+      assert :ok = Giocci.register_client(@relay_name)
+      assert :ok = Giocci.save_module(@relay_name, GiocciIntegrationTest)
+      assert 3 == Giocci.exec_func(@relay_name, {GiocciIntegrationTest, :add, [1, 2]})
+
+      assert :ok = Giocci.unregister_client(@relay_name, measure_to: self())
+
+      assert_receive {:giocci_measurements,
+                      %{
+                        client_send_timestamp_to_relay: _,
+                        relay_recv_timestamp_from_client: _,
+                        relay_send_timestamp_to_client: _,
+                        client_recv_timestamp_from_relay: _,
+                        client_to_relay: _,
+                        relay_to_client: _
+                      }}
+
+      refute GiocciRelay.ClientRegistrar.registered?(@client_name)
+      assert {:ok, []} = Giocci.Inspect.list_relays()
+      assert {:ok, [GiocciIntegrationTest]} = GiocciRelay.ModuleStore.list(@client_name)
+      assert {:ok, ["Elixir.GiocciIntegrationTest"]} = Giocci.Inspect.list_modules(@relay_name)
+
+      assert {:error, "relay_not_registered"} =
+               Giocci.save_module(@relay_name, GiocciIntegrationTest)
+
+      assert {:error, "relay_not_registered"} =
+               Giocci.exec_func(@relay_name, {GiocciIntegrationTest, :add, [1, 2]})
+
+      assert {:error, "relay_not_registered"} =
+               Giocci.exec_func_async(
+                 @relay_name,
+                 {GiocciIntegrationTest, :add, [1, 2]},
+                 self()
+               )
+
+      assert :ok = Giocci.register_client(@relay_name)
+      assert 3 == Giocci.exec_func(@relay_name, {GiocciIntegrationTest, :add, [1, 2]})
+      assert {:ok, [GiocciIntegrationTest]} = GiocciRelay.ModuleStore.list(@client_name)
+    end
+
+    test "unregistration is idempotent without local history and leaves other clients intact" do
+      assert :ok = Giocci.unregister_client(@relay_name)
+      assert :ok = Giocci.unregister_client(@relay_name)
+
+      assert {:ok, %{data: nil}} = client_registration_request("register", "another-client")
+
+      assert :ok =
+               GiocciRelay.ModuleStore.put(
+                 "another-client",
+                 :code.get_object_code(GiocciIntegrationTest)
+               )
+
+      assert :ok = Giocci.register_client(@relay_name)
+      assert :ok = Giocci.save_module(@relay_name, GiocciIntegrationTest)
+      assert :ok = Giocci.unregister_client(@relay_name)
+      assert :ok = Giocci.unregister_client(@relay_name)
+
+      assert GiocciRelay.ClientRegistrar.registered?("another-client")
+      assert {:ok, [GiocciIntegrationTest]} = GiocciRelay.ModuleStore.list("another-client")
+      assert {:ok, [GiocciIntegrationTest]} = GiocciRelay.ModuleStore.list(@client_name)
+    end
+
+    test "unregistration for a shared name leaves another local registration stale" do
+      assert :ok = Giocci.register_client(@relay_name)
+      assert :ok = Giocci.save_module(@relay_name, GiocciIntegrationTest)
+
+      assert {:ok, %{data: nil}} =
+               client_registration_request("unregister", @client_name)
+
+      assert {:error, [%{relay: @relay_name, reason: "client_not_registered"}]} =
+               Giocci.Inspect.list_relays()
+
+      assert {:error, "client_not_registered"} =
+               Giocci.exec_func(@relay_name, {GiocciIntegrationTest, :add, [1, 2]})
+
+      assert {:ok, %{data: nil}} = client_registration_request("register", @client_name)
+      assert 3 == Giocci.exec_func(@relay_name, {GiocciIntegrationTest, :add, [1, 2]})
+
+      assert :ok = Giocci.unregister_client(@relay_name)
+      assert {:ok, []} = Giocci.Inspect.list_relays()
     end
 
     test "dynamically compiled module is saved and updated" do
@@ -154,6 +246,23 @@ defmodule GiocciIntegrationTestTest do
   end
 
   describe "error cases" do
+    test "unregistration failure keeps local registration and can be retried" do
+      setup_relay_and_client()
+      assert :ok = Giocci.register_client(@relay_name)
+      assert :ok = Application.stop(:giocci_relay)
+
+      assert {:error, reason} = Giocci.unregister_client(@relay_name, timeout: 250)
+
+      assert String.starts_with?(reason, "connection_failed:") or
+               String.starts_with?(reason, "timeout:")
+
+      assert %{registered_relays: [@relay_name]} = Giocci.Worker.inspection_info()
+
+      {:ok, _} = Application.ensure_all_started(:giocci_relay)
+      assert :ok = Giocci.unregister_client(@relay_name)
+      assert {:ok, []} = Giocci.Inspect.list_relays()
+    end
+
     test "redefining a dynamic module without use does not replace the saved BEAM" do
       setup_relay_and_client()
       setup_engine()

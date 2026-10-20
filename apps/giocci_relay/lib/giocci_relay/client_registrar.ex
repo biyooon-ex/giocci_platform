@@ -32,14 +32,52 @@ defmodule GiocciRelay.ClientRegistrar do
     {:ok, register_client_queryable_id} =
       Zenohex.Session.declare_queryable(session_id, register_client_key)
 
+    unregister_client_key = Path.join(key_prefix, "giocci/unregister/client/#{relay_name}")
+
+    {:ok, unregister_client_queryable_id} =
+      Zenohex.Session.declare_queryable(session_id, unregister_client_key)
+
     {:ok,
      %{
        relay_name: relay_name,
        key_prefix: key_prefix,
        register_client_key: register_client_key,
        register_client_queryable_id: register_client_queryable_id,
+       unregister_client_key: unregister_client_key,
+       unregister_client_queryable_id: unregister_client_queryable_id,
        registered_clients: []
      }}
+  end
+
+  def handle_info(
+        %Zenohex.Query{
+          key_expr: unregister_client_key,
+          payload: binary,
+          zenoh_query: zenoh_query
+        },
+        %{unregister_client_key: unregister_client_key} = state
+      ) do
+    relay_recv_timestamp_from_client = System.os_time(:microsecond)
+
+    {result, state} =
+      with {:ok, term_from_client} <- Utils.decode(binary),
+           {:ok, client_name} <- extract(term_from_client.data) do
+        Logger.debug("#{inspect(client_name)} unregistered.")
+
+        reply = %{data: nil, measurements: term_from_client.measurements}
+
+        {{:ok, reply},
+         %{state | registered_clients: List.delete(state.registered_clients, client_name)}}
+      else
+        error ->
+          Logger.error("Client unregistration failed by #{inspect(error)}.")
+          {error, state}
+      end
+
+    result = maybe_add_measurements(result, relay_recv_timestamp_from_client)
+    :ok = Utils.zenohex_reply(zenoh_query, unregister_client_key, result)
+
+    {:noreply, state}
   end
 
   def handle_info(

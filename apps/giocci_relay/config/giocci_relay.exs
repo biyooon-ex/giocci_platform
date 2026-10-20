@@ -15,3 +15,8 @@ config :giocci_relay, relay_name: "giocci_relay"
 # Optional key prefix for Zenoh keys
 # Important: This must match the key_prefix in client and engine configurations
 # config :giocci_relay, key_prefix: ""
+
+# Optional Engine selection policy (defaults to round-robin)
+# config :giocci_relay,
+#   engine_selection_policy: GiocciRelay.EngineSelectionPolicy.RoundRobin,
+#   engine_selection_policy_opts: []

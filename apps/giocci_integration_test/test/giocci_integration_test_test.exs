@@ -1,3 +1,19 @@
+defmodule GiocciIntegrationTest.SelectionPolicy do
+  @behaviour GiocciRelay.EngineSelectionPolicy
+
+  @impl true
+  def init(opts), do: {:ok, Keyword.fetch!(opts, :test_pid)}
+
+  @impl true
+  def candidates_changed(_old, _new, test_pid), do: test_pid
+
+  @impl true
+  def select([engine | _], request, test_pid) do
+    send(test_pid, {:engine_selected, request})
+    {:ok, engine, test_pid}
+  end
+end
+
 defmodule GiocciIntegrationTestTest do
   use ExUnit.Case
   import ExUnit.CaptureLog
@@ -62,6 +78,32 @@ defmodule GiocciIntegrationTestTest do
       Zenohex.Session.get(Giocci.SessionManager.session_id(), key, 5_000, payload: payload)
 
     :erlang.binary_to_term(reply)
+  end
+
+  defp register_fake_engine(engine_name) do
+    session_id = Giocci.SessionManager.session_id()
+    save_key = "giocci/save_module/relay/#{engine_name}"
+    register_key = "giocci/register/engine/#{@relay_name}"
+    {:ok, queryable_id} = Zenohex.Session.declare_queryable(session_id, save_key)
+    payload = :erlang.term_to_binary(%{data: %{engine_name: engine_name}, measurements: %{}})
+
+    task =
+      Task.async(fn ->
+        Zenohex.Session.get(session_id, register_key, 5_000, payload: payload)
+      end)
+
+    assert_receive %Zenohex.Query{key_expr: ^save_key, zenoh_query: query}, 5_000
+
+    assert :ok =
+             GiocciRelay.Utils.zenohex_reply(
+               query,
+               save_key,
+               {:ok, %{data: nil, measurements: %{}}}
+             )
+
+    assert {:ok, [%Zenohex.Sample{payload: reply}]} = Task.await(task, 6_000)
+    assert {:ok, %{data: nil}} = :erlang.binary_to_term(reply)
+    assert :ok = Zenohex.Queryable.undeclare(queryable_id)
   end
 
   defp client_registration_request(operation, client_name) do
@@ -219,6 +261,68 @@ defmodule GiocciIntegrationTestTest do
       assert :ok == Giocci.save_module(@relay_name, module)
       assert 4 == Giocci.exec_func(@relay_name, {module, :add, [1, 2]})
     end
+  end
+
+  describe "configured Engine selection policy" do
+    setup do
+      :ok =
+        Application.put_env(
+          :giocci_relay,
+          :engine_selection_policy,
+          GiocciIntegrationTest.SelectionPolicy
+        )
+
+      :ok = Application.put_env(:giocci_relay, :engine_selection_policy_opts, test_pid: self())
+
+      on_exit(fn ->
+        :ok = Application.delete_env(:giocci_relay, :engine_selection_policy)
+        :ok = Application.delete_env(:giocci_relay, :engine_selection_policy_opts)
+      end)
+
+      setup_relay_and_client()
+      setup_engine()
+      :ok
+    end
+
+    test "both synchronous and asynchronous execution use the configured policy" do
+      mfargs = {GiocciIntegrationTest, :add, [1, 2]}
+      assert :ok = Giocci.register_client(@relay_name)
+      assert :ok = Giocci.save_module(@relay_name, GiocciIntegrationTest)
+
+      assert 3 == Giocci.exec_func(@relay_name, mfargs)
+      assert_receive {:engine_selected, %{mfargs: ^mfargs, client_name: @client_name}}
+
+      assert :ok = Giocci.exec_func_async(@relay_name, mfargs, self())
+      assert_receive {:engine_selected, %{mfargs: ^mfargs, client_name: @client_name}}
+      assert_receive {:giocci, 3}, @async_message_timeout
+    end
+  end
+
+  test "concurrent Engine selections advance the rotation once per inquiry" do
+    setup_relay_and_client()
+    Enum.each(["A", "B", "C"], &register_fake_engine/1)
+
+    assert ["A", "B", "C"] == GiocciRelay.EngineRegistrar.registered_engines()
+    assert {:ok, "A"} = GiocciRelay.EngineRegistrar.select_engine(%{})
+    assert {:ok, "B"} = GiocciRelay.EngineRegistrar.select_engine(%{})
+    register_fake_engine("B")
+    assert ["A", "B", "C"] == GiocciRelay.EngineRegistrar.registered_engines()
+    assert {:ok, "C"} = GiocciRelay.EngineRegistrar.select_engine(%{})
+
+    selections =
+      1..60
+      |> Task.async_stream(
+        fn _ -> GiocciRelay.EngineRegistrar.select_engine(%{client_name: @client_name}) end,
+        max_concurrency: 20
+      )
+      |> Enum.map(fn {:ok, {:ok, engine}} -> engine end)
+
+    assert Enum.frequencies(selections) == %{"A" => 20, "B" => 20, "C" => 20}
+
+    assert {:ok, %{data: nil}} = unregister_engine("B")
+    assert ["A", "C"] == GiocciRelay.EngineRegistrar.registered_engines()
+    assert {:ok, "A"} = GiocciRelay.EngineRegistrar.select_engine(%{})
+    assert {:ok, "C"} = GiocciRelay.EngineRegistrar.select_engine(%{})
   end
 
   describe "engine start timing" do

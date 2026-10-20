@@ -11,7 +11,7 @@ GiocciPlatform is a resource-permeating computing platform for wide-area distrib
 This repository contains the GiocciPlatform, which enables distributed code execution across wide-area networks. The platform consists of three main components and an integration test suite:
 
 - **Giocci** - Client library for sending modules and executing functions on remote engines
-- **GiocciRelay** - Relay component that manages client/engine registration and routes requests
+- **GiocciRelay** - Relay component that manages client/engine registration, stores modules, and directs clients to execution engines
 - **GiocciEngine** - Execution engine that loads modules and executes functions
 - **GiocciIntegrationTest** - Integration test suite that verifies end-to-end functionality across all components
 
@@ -29,6 +29,8 @@ An Elixir library that allows applications to:
 
 **Installation and usage**: See [apps/giocci/README.md](apps/giocci/README.md)
 
+**Shared Engine behavior**: See [current behavior and limitations](apps/giocci/README.md#current-behavior-and-limitations) before sharing an Engine between clients.
+
 **Hex package**: [giocci](https://hex.pm/packages/giocci)
 
 ### GiocciRelay
@@ -36,7 +38,7 @@ An Elixir library that allows applications to:
 A relay service that:
 - Manages client and engine registrations
 - Stores and distributes modules to engines
-- Routes execution requests between clients and engines
+- Selects an Engine for execution; clients send execution requests directly to it
 
 **Deployment guide**: See [apps/giocci_relay/README.md](apps/giocci_relay/README.md)
 
@@ -94,6 +96,7 @@ This platform communicates over Zenohex (Zenoh) using Query/Reply and Pub/Sub pa
 - Client registration: `giocci/register/client/{relay_name}`
 - Client unregistration: `giocci/unregister/client/{relay_name}`
 - Engine registration: `giocci/register/engine/{relay_name}`
+- Engine unregistration: `giocci/unregister/engine/{relay_name}`
 - Save module (Client -> Relay): `giocci/save_module/client/{relay_name}`
 - Distribute module (Relay -> Engine): `giocci/save_module/relay/{engine_name}`
 - Engine inquiry: `giocci/inquiry_engine/client/{relay_name}`
@@ -145,8 +148,8 @@ sequenceDiagram
   Relay->>Relay: validate client + ModuleStore.put
   Relay->>Engine: Query giocci/save_module/relay/{engine}
   Engine->>Engine: :code.load_binary
-  Engine->>Relay: Reply :ok
-  Relay->>Client: Reply :ok
+  Engine->>Relay: Reply load result
+  Relay->>Client: Reply per-Engine results
 ```
 
 #### 4) Sync Execution (Client -> Relay -> Engine -> Client)
@@ -201,7 +204,8 @@ sequenceDiagram
 
 - Client <-> Relay uses Query/Reply; Engine uses Queryable for sync and Subscriber/Publisher for async.
 - All communication is via Zenohex key space; `key_prefix` may be prepended.
-- Engine selection is currently first-registered in `GiocciRelay.EngineRegistrar.select_engine/0`.
+- Engine selection defaults to round-robin among registered Engines; the policy is configurable at Relay startup.
+- The client API can return `:ok` for `save_module` even if an Engine reported a distribution error. See [current behavior and limitations](apps/giocci/README.md#current-behavior-and-limitations).
 
 ## For Developers
 

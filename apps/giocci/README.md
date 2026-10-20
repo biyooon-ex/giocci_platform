@@ -23,7 +23,7 @@ Configure Giocci in your `config/config.exs`:
 ```elixir
 config :giocci,
   zenoh_config_file_path: "path/to/zenoh.json5",  # Path to Zenoh configuration
-  client_name: "my_client",                       # Unique client identifier
+  client_name: "my_client",                       # Shared namespace for this client name
   key_prefix: ""                                  # Optional key prefix for Zenoh keys
 ```
 
@@ -61,6 +61,9 @@ Save an Elixir module to the relay (which distributes it to engines):
 ```elixir
 :ok = Giocci.save_module("giocci_relay", MyModule)
 ```
+
+On a shared Engine, saving another implementation with the same module name
+can replace this code. See [Current behavior and limitations](#current-behavior-and-limitations).
 
 If the relay loses the client registration (for example after a restart),
 `save_module/3` returns `{:error, "client_not_registered"}` and logs a warning.
@@ -246,6 +249,26 @@ Common issues:
 - **Relay not found**: Ensure the relay name matches between client config and running relay
 - **Key prefix mismatch**: Verify `key_prefix` is the same across client, relay, and engine configurations
 - **Module not loaded**: Check engine logs for module loading errors
+
+## Current behavior and limitations
+
+- Relay stores modules by client name, but Engines load them into a shared
+  BEAM VM under their original module names. Different client names do not
+  isolate code or runtime state: saving a different implementation with the
+  same module name can replace the code used by another client on that Engine.
+- Execution checks whether the module is loaded on the selected Engine, not
+  whether this client saved it. A registered client may execute a module
+  loaded by another client; client names are not access control. Clients
+  using the same name also share saved modules and registration state.
+- By default, a relay selects Engines round-robin. Consecutive calls from
+  the same client may run on different Engines, whose runtime state is not
+  shared.
+- `save_module/3` stores the BEAM at the relay before distributing it.
+  Returning `:ok` does not guarantee that every Engine loaded it; a timeout
+  may also occur after the relay stored it.
+- `exec_func_async/4` returning `:ok` does not guarantee a result. If
+  execution fails or the result times out, no error message is sent to the
+  result receiver.
 
 ## API Reference
 

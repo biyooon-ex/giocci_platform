@@ -59,10 +59,10 @@ defmodule GiocciRelay.EngineRegistrar do
       ) do
     {result, state} =
       with {:ok, term_from_engine} <- Utils.decode(binary),
-           {:ok, engine_name} <- extract(term_from_engine.data) do
+           {:ok, {engine_name, measurements}} <- extract_unregister(term_from_engine) do
         Logger.debug("#{inspect(engine_name)} unregistered.")
 
-        {{:ok, %{data: nil, measurements: term_from_engine.measurements}},
+        {{:ok, %{data: nil, measurements: measurements}},
          %{state | registered_engines: List.delete(state.registered_engines, engine_name)}}
       else
         error ->
@@ -146,6 +146,13 @@ defmodule GiocciRelay.EngineRegistrar do
   rescue
     MatchError -> {:error, "term_not_expected"}
   end
+
+  defp extract_unregister(%{data: %{engine_name: engine_name}, measurements: measurements})
+       when is_binary(engine_name) and is_map(measurements) do
+    {:ok, {engine_name, measurements}}
+  end
+
+  defp extract_unregister(_), do: {:error, "term_not_expected"}
 
   defp maybe_add_measurements(result, relay_recv_timestamp_from_engine) do
     case result do

@@ -51,8 +51,12 @@ defmodule GiocciIntegrationTestTest do
   end
 
   defp unregister_engine(engine_name) do
+    unregister_engine_request(%{data: %{engine_name: engine_name}, measurements: %{}})
+  end
+
+  defp unregister_engine_request(term) do
     key = "giocci/unregister/engine/#{@relay_name}"
-    payload = :erlang.term_to_binary(%{data: %{engine_name: engine_name}, measurements: %{}})
+    payload = :erlang.term_to_binary(term)
 
     {:ok, [%Zenohex.Sample{payload: reply}]} =
       Zenohex.Session.get(Giocci.SessionManager.session_id(), key, 5_000, payload: payload)
@@ -253,6 +257,30 @@ defmodule GiocciIntegrationTestTest do
       assert {:ok, %{data: nil}} = unregister_engine(@engine_name)
       assert {:ok, []} == Giocci.Inspect.list_engines(@relay_name)
       assert {:ok, [GiocciIntegrationTest]} == GiocciRelay.ModuleStore.list(@client_name)
+    end
+
+    test "malformed unregister requests do not reset engine registrations" do
+      setup_relay_and_client()
+      setup_engine()
+
+      assert :ok == Giocci.register_client(@relay_name)
+      assert :ok == Giocci.save_module(@relay_name, GiocciIntegrationTest)
+      registrar = Process.whereis(GiocciRelay.EngineRegistrar)
+
+      for term <- [
+            %{data: %{engine_name: @engine_name}},
+            %{measurements: %{}},
+            %{data: %{engine_name: @engine_name}, measurements: []},
+            %{data: %{engine_name: nil}, measurements: %{}},
+            nil
+          ] do
+        assert {:error, "term_not_expected"} == unregister_engine_request(term)
+        assert Process.whereis(GiocciRelay.EngineRegistrar) == registrar
+        assert [@engine_name] == GiocciRelay.EngineRegistrar.registered_engines()
+      end
+
+      assert {:ok, [GiocciIntegrationTest]} == GiocciRelay.ModuleStore.list(@client_name)
+      assert 3 == Giocci.exec_func(@relay_name, {GiocciIntegrationTest, :add, [1, 2]})
     end
 
     test "engine stops within a bounded time when relay does not reply to unregistration" do

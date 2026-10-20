@@ -1,6 +1,6 @@
 # GiocciRelay
 
-GiocciRelay is a relay component for the GiocciPlatform that forwards messages between Zenoh networks.
+GiocciRelay registers clients and Engines, stores and distributes modules, and selects an Engine for execution. Clients send execution requests directly to the selected Engine.
 
 ## Prerequisites
 

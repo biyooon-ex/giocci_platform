@@ -66,6 +66,27 @@ defmodule GiocciIntegrationTestTest do
     :ok
   end
 
+  defp await_matching(expected) do
+    receive do
+      %Zenohex.Matching.Status{matching: ^expected} -> :ok
+      %Zenohex.Matching.Status{} -> await_matching(expected)
+    after
+      5_000 -> flunk("relay queryable matching did not become #{expected}")
+    end
+  end
+
+  defp watch_relay_queryable(key) do
+    {:ok, querier} = Zenohex.Session.declare_querier(Giocci.SessionManager.session_id(), key)
+    {:ok, listener} = Zenohex.Matching.declare_listener(querier)
+
+    on_exit(fn ->
+      :ok = Zenohex.Matching.undeclare_listener(listener)
+      :ok = Zenohex.Querier.undeclare(querier)
+    end)
+
+    await_matching(true)
+  end
+
   defp unregister_engine(engine_name) do
     unregister_engine_request(%{data: %{engine_name: engine_name}, measurements: %{}})
   end
@@ -389,7 +410,9 @@ defmodule GiocciIntegrationTestTest do
     test "unregistration failure keeps local registration and can be retried" do
       setup_relay_and_client()
       assert :ok = Giocci.register_client(@relay_name)
+      watch_relay_queryable("giocci/unregister/client/#{@relay_name}")
       assert :ok = Application.stop(:giocci_relay)
+      await_matching(false)
 
       assert {:error, reason} = Giocci.unregister_client(@relay_name, timeout: 250)
 
@@ -399,6 +422,7 @@ defmodule GiocciIntegrationTestTest do
       assert %{registered_relays: [@relay_name]} = Giocci.Worker.inspection_info()
 
       {:ok, _} = Application.ensure_all_started(:giocci_relay)
+      await_matching(true)
       assert :ok = Giocci.unregister_client(@relay_name)
       assert {:ok, []} = Giocci.Inspect.list_relays()
     end
@@ -922,7 +946,9 @@ defmodule GiocciIntegrationTestTest do
       assert :ok = Giocci.register_client(@relay_name)
       assert {:ok, [@relay_name]} = Giocci.Inspect.list_relays()
 
+      watch_relay_queryable("giocci/inspect/relay/#{@relay_name}")
       assert :ok = Application.stop(:giocci_relay)
+      await_matching(false)
 
       assert {:error, [%{relay: @relay_name, reason: reason}]} =
                Giocci.Inspect.list_relays(timeout: 250)
@@ -936,6 +962,7 @@ defmodule GiocciIntegrationTestTest do
                String.starts_with?(relay_error, "timeout:")
 
       {:ok, _} = Application.ensure_all_started(:giocci_relay)
+      await_matching(true)
 
       assert {:error, [%{relay: @relay_name, reason: "client_not_registered"}]} =
                Giocci.Inspect.list_relays()

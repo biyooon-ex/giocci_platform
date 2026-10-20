@@ -25,6 +25,10 @@ defmodule GiocciPico.MixProject do
     ]
   end
 
+  def cli do
+    [default_target: :avm_esp32]
+  end
+
   # Run "mix help compile.app" to learn about applications.
   def application do
     [

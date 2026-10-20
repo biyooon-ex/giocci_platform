@@ -65,8 +65,15 @@ defmodule GiocciIntegrationTestTest do
   end
 
   defp client_registration_request(operation, client_name) do
+    client_registration_request_term(
+      operation,
+      %{data: %{client_name: client_name}, measurements: %{}}
+    )
+  end
+
+  defp client_registration_request_term(operation, term) do
     key = "giocci/#{operation}/client/#{@relay_name}"
-    payload = :erlang.term_to_binary(%{data: %{client_name: client_name}, measurements: %{}})
+    payload = :erlang.term_to_binary(term)
 
     {:ok, [%Zenohex.Sample{payload: reply}]} =
       Zenohex.Session.get(Giocci.SessionManager.session_id(), key, 5_000, payload: payload)
@@ -246,6 +253,35 @@ defmodule GiocciIntegrationTestTest do
   end
 
   describe "error cases" do
+    test "malformed client registration requests preserve existing registrations" do
+      setup_relay_and_client()
+      assert :ok = Giocci.register_client(@relay_name)
+      assert {:ok, %{data: nil}} = client_registration_request("register", "another-client")
+
+      registrar = Process.whereis(GiocciRelay.ClientRegistrar)
+
+      for operation <- ["register", "unregister"],
+          term <- [
+            %{},
+            %{measurements: %{}},
+            %{data: %{client_name: @client_name}},
+            %{data: %{client_name: @client_name}, measurements: []},
+            %{data: %{client_name: nil}, measurements: %{}},
+            %{data: [], measurements: %{}}
+          ] do
+        assert {:error, "term_not_expected"} ==
+                 client_registration_request_term(operation, term)
+
+        assert Process.whereis(GiocciRelay.ClientRegistrar) == registrar
+        assert GiocciRelay.ClientRegistrar.registered?(@client_name)
+        assert GiocciRelay.ClientRegistrar.registered?("another-client")
+      end
+
+      assert :ok = Giocci.unregister_client(@relay_name)
+      refute GiocciRelay.ClientRegistrar.registered?(@client_name)
+      assert GiocciRelay.ClientRegistrar.registered?("another-client")
+    end
+
     test "unregistration failure keeps local registration and can be retried" do
       setup_relay_and_client()
       assert :ok = Giocci.register_client(@relay_name)

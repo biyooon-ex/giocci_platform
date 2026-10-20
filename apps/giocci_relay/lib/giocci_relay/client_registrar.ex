@@ -61,10 +61,10 @@ defmodule GiocciRelay.ClientRegistrar do
 
     {result, state} =
       with {:ok, term_from_client} <- Utils.decode(binary),
-           {:ok, client_name} <- extract(term_from_client.data) do
+           {:ok, {client_name, measurements}} <- extract(term_from_client) do
         Logger.debug("#{inspect(client_name)} unregistered.")
 
-        reply = %{data: nil, measurements: term_from_client.measurements}
+        reply = %{data: nil, measurements: measurements}
 
         {{:ok, reply},
          %{state | registered_clients: List.delete(state.registered_clients, client_name)}}
@@ -89,13 +89,13 @@ defmodule GiocciRelay.ClientRegistrar do
 
     {result, state} =
       with {:ok, term_from_client} <- Utils.decode(binary),
-           {:ok, client_name} <- extract(term_from_client.data) do
+           {:ok, {client_name, measurements}} <- extract(term_from_client) do
         Logger.debug("#{inspect(client_name)} registration completed successfully.")
         registered_clients = [client_name | registered_clients] |> Enum.uniq()
 
         term_to_client = %{
           data: nil,
-          measurements: term_from_client.measurements
+          measurements: measurements
         }
 
         {{:ok, term_to_client}, %{state | registered_clients: registered_clients}}
@@ -126,15 +126,12 @@ defmodule GiocciRelay.ClientRegistrar do
     {:reply, client_name in state.registered_clients, state}
   end
 
-  defp extract(term) do
-    %{
-      client_name: client_name
-    } = term
-
-    {:ok, client_name}
-  rescue
-    MatchError -> {:error, "term_not_expected"}
+  defp extract(%{data: %{client_name: client_name}, measurements: measurements})
+       when is_binary(client_name) and is_map(measurements) do
+    {:ok, {client_name, measurements}}
   end
+
+  defp extract(_), do: {:error, "term_not_expected"}
 
   defp maybe_add_measurements(result, relay_recv_timestamp_from_client) do
     case result do

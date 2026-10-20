@@ -12,6 +12,16 @@ defmodule GiocciRelay.Application do
     relay_name = Application.fetch_env!(:giocci_relay, :relay_name)
     key_prefix = Application.get_env(:giocci_relay, :key_prefix, "")
 
+    engine_selection_policy =
+      Application.get_env(
+        :giocci_relay,
+        :engine_selection_policy,
+        GiocciRelay.EngineSelectionPolicy.RoundRobin
+      )
+
+    engine_selection_policy_opts =
+      Application.get_env(:giocci_relay, :engine_selection_policy_opts, [])
+
     children = [
       {GiocciRelay.ModuleStore, []},
       {GiocciRelay.SessionManager, [zenoh_config_file_path: zenoh_config_file_path]},
@@ -23,7 +33,9 @@ defmodule GiocciRelay.Application do
       {GiocciRelay.EngineRegistrar,
        [
          relay_name: relay_name,
-         key_prefix: key_prefix
+         key_prefix: key_prefix,
+         engine_selection_policy: engine_selection_policy,
+         engine_selection_policy_opts: engine_selection_policy_opts
        ]},
       {GiocciRelay.ModuleSaver,
        [

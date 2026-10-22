@@ -74,7 +74,7 @@ defmodule GiocciPico.Worker do
     {result, state} =
       with key <- join(key_prefix, "giocci/register/client/#{relay_name}"),
            {:ok, term_from_relay} <- Utils.zenohex_get(session, key, timeout, term_to_relay) do
-        registered_relays = [relay_name | registered_relays] |> Enum.uniq()
+        registered_relays = [relay_name | registered_relays] |> uniq()
         state = %{state | registered_relays: registered_relays}
         {term_from_relay, state}
       else
@@ -287,4 +287,11 @@ defmodule GiocciPico.Worker do
 
   def join(_key_prefix = "", key), do: key
   def join(key_prefix, key), do: "#{key_prefix}/#{key}"
+
+  def uniq(enumerable) do
+    Enum.reduce(enumerable, [], fn elem, acc ->
+      if elem in acc, do: acc, else: [elem | acc]
+    end)
+    |> Enum.reverse()
+  end
 end

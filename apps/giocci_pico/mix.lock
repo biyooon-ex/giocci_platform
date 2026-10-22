@@ -6,5 +6,5 @@
   "fine": {:hex, :fine, "0.1.6", "4bf7151493443c454aac9f2fa2f34f5fefd0346a83fb5586a016c4a135c63247", [:mix], [], "hexpm", "5638eb4495488e885ebec167fa57973e5c35e1a50c344eb7666c90ec1c4e3b12"},
   "pythonx": {:hex, :pythonx, "0.4.10", "7c3377f07b15f30e51a364a92b5a456a9bbbc9a555b855e09acf551b3f36abed", [:make, :mix], [{:cc_precompiler, "~> 0.1", [hex: :cc_precompiler, repo: "hexpm", optional: false]}, {:elixir_make, "~> 0.9", [hex: :elixir_make, repo: "hexpm", optional: false]}, {:fine, "~> 0.1.2", [hex: :fine, repo: "hexpm", optional: false]}, {:flame, "~> 0.5", [hex: :flame, repo: "hexpm", optional: true]}], "hexpm", "7b7bb0728e4b69c362a8c0c93953ac44b10a51b21a864f2a0801155a3d8989a4"},
   "uf2tool": {:hex, :uf2tool, "1.1.0", "7091931234ca5a256b66ea691983867d51229798622d083f85c1ad779798a734", [:rebar3], [], "hexpm", "1a7e5ca7ef3d19c7a0b0acf3db804b3188e0980884acffa13fd57d733507b73d"},
-  "zenohex_pico": {:git, "git@github.com:biyooon-ex/zenohex_pico.git", "a758ed29af87413e5d320ac6a7776fab8778e5a0", [ref: "a758ed29af87413e5d320ac6a7776fab8778e5a0"]},
+  "zenohex_pico": {:git, "git@github.com:biyooon-ex/zenohex_pico.git", "c59218d7cabd9649640ed0621fcd33038088d856", [branch: "update"]},
 }

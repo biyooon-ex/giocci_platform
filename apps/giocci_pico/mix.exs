@@ -14,7 +14,7 @@ defmodule GiocciPico.MixProject do
       deps: deps(),
       atomvm: [
         start: GiocciPico.Sample.Test,
-        flash_offset: 0x250000
+        flash_offset: 0x290000
       ],
       aliases: [
         flash: [
@@ -41,9 +41,7 @@ defmodule GiocciPico.MixProject do
     [
       {:exatomvm, github: "atomvm/exatomvm", runtime: false, override: true},
       {:atomvm, "~> 0.7.0-beta.0", optional: true, runtime: false},
-      {:zenohex_pico,
-       git: "git@github.com:biyooon-ex/zenohex_pico.git",
-       ref: "a758ed29af87413e5d320ac6a7776fab8778e5a0"},
+      {:zenohex_pico, git: "git@github.com:biyooon-ex/zenohex_pico.git", branch: "update"},
       {:pythonx, "~> 0.4.0"}
     ]
   end

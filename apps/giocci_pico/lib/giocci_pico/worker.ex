@@ -156,10 +156,9 @@ defmodule GiocciPico.Worker do
   end
 
   defp validate_module_found({module, _binary, _filename}) do
-    if Code.ensure_loaded?(module) do
-      :ok
-    else
-      {:error, "module_not_found"}
+    case :code.ensure_loaded(module) do
+      {:module, ^module} -> :ok
+      {:error, _reason} -> {:error, "module_not_found"}
     end
   end
 

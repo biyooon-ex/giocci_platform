@@ -28,7 +28,7 @@ defmodule GiocciPico.Sample.Test do
     {:ok, _pid} =
       GiocciPico.Supervisor.start_link(
         zenohex_pico_config: config,
-        client_name: "",
+        client_name: "giocci_pico",
         key_prefix: ""
       )
 

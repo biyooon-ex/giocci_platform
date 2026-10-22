@@ -72,7 +72,7 @@ defmodule GiocciPico.Worker do
     }
 
     {result, state} =
-      with key <- Path.join(key_prefix, "giocci/register/client/#{relay_name}"),
+      with key <- join(key_prefix, "giocci/register/client/#{relay_name}"),
            {:ok, term_from_relay} <- Utils.zenohex_get(session, key, timeout, term_to_relay) do
         registered_relays = [relay_name | registered_relays] |> Enum.uniq()
         state = %{state | registered_relays: registered_relays}
@@ -109,7 +109,7 @@ defmodule GiocciPico.Worker do
     result =
       with :ok <- validate_relay_registered(relay_name, registered_relays),
            :ok <- validate_module_found(module_object_code),
-           key <- Path.join(key_prefix, "giocci/save_module/client/#{relay_name}"),
+           key <- join(key_prefix, "giocci/save_module/client/#{relay_name}"),
            {:ok, term_from_relay} <- Utils.zenohex_get(session, key, timeout, term_to_relay) do
         # NOTE: term_from_relay is a list of {:ok, _} or {:error, _} tuples.
         term_from_relay
@@ -141,10 +141,10 @@ defmodule GiocciPico.Worker do
 
     result =
       with :ok <- validate_relay_registered(relay_name, registered_relays),
-           key <- Path.join(key_prefix, "giocci/inquiry_engine/client/#{relay_name}"),
+           key <- join(key_prefix, "giocci/inquiry_engine/client/#{relay_name}"),
            {:ok, term_from_relay} <- Utils.zenohex_get(session, key, timeout, term_to_relay),
            {:ok, %{data: data, measurements: measurements}} <- term_from_relay,
-           key <- Path.join(key_prefix, "giocci/exec_func/client/#{data.engine_name}"),
+           key <- join(key_prefix, "giocci/exec_func/client/#{data.engine_name}"),
            term_to_engine <- %{term_to_relay | measurements: measurements},
            {:ok, term_from_engine} <- Utils.zenohex_get(session, key, timeout, term_to_engine) do
         term_from_engine
@@ -284,4 +284,7 @@ defmodule GiocciPico.Worker do
         measurements
     end
   end
+
+  def join(_key_prefix = "", key), do: key
+  def join(key_prefix, key), do: "#{key_prefix}/#{key}"
 end

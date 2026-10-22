@@ -35,10 +35,10 @@ defmodule GiocciPico.Utils do
     name = extract_target_name(key)
 
     cond do
-      String.contains?(key, "/register/client/") -> "Registering client to relay '#{name}'"
-      String.contains?(key, "/save_module/client/") -> "Saving module via relay '#{name}'"
-      String.contains?(key, "/inquiry_engine/client/") -> "Inquiring engine from relay '#{name}'"
-      String.contains?(key, "/exec_func/client/") -> "Executing function on engine '#{name}'"
+      contains?(key, "/register/client/") -> "Registering client to relay '#{name}'"
+      contains?(key, "/save_module/client/") -> "Saving module via relay '#{name}'"
+      contains?(key, "/inquiry_engine/client/") -> "Inquiring engine from relay '#{name}'"
+      contains?(key, "/exec_func/client/") -> "Executing function on engine '#{name}'"
       true -> "Operation on '#{key}'"
     end
   end
@@ -47,17 +47,17 @@ defmodule GiocciPico.Utils do
     name = extract_target_name(key)
 
     cond do
-      String.contains?(key, "/register/client/") -> "Relay '#{name}' may not be running"
-      String.contains?(key, "/save_module/client/") -> "Relay '#{name}' may not be running"
-      String.contains?(key, "/inquiry_engine/client/") -> "Relay '#{name}' may not be running"
-      String.contains?(key, "/exec_func/client/") -> "Engine '#{name}' may not be running"
+      contains?(key, "/register/client/") -> "Relay '#{name}' may not be running"
+      contains?(key, "/save_module/client/") -> "Relay '#{name}' may not be running"
+      contains?(key, "/inquiry_engine/client/") -> "Relay '#{name}' may not be running"
+      contains?(key, "/exec_func/client/") -> "Engine '#{name}' may not be running"
       true -> "Target component may not be running"
     end
   end
 
   defp extract_target_name(key) do
     key
-    |> String.split("/")
+    |> :binary.split("/", [:global])
     |> List.last()
   end
 
@@ -75,10 +75,10 @@ defmodule GiocciPico.Utils do
   defp add_send_measurements(key, %{measurements: measurements} = send_term) do
     key =
       cond do
-        String.contains?(key, "/register/client/") -> :client_send_timestamp_to_relay
-        String.contains?(key, "/save_module/client/") -> :client_send_timestamp_to_relay
-        String.contains?(key, "/inquiry_engine/client/") -> :client_send_timestamp_to_relay
-        String.contains?(key, "/exec_func/client/") -> :client_send_timestamp_to_engine
+        contains?(key, "/register/client/") -> :client_send_timestamp_to_relay
+        contains?(key, "/save_module/client/") -> :client_send_timestamp_to_relay
+        contains?(key, "/inquiry_engine/client/") -> :client_send_timestamp_to_relay
+        contains?(key, "/exec_func/client/") -> :client_send_timestamp_to_engine
         true -> raise "Unexpected condition reached"
       end
 
@@ -91,9 +91,9 @@ defmodule GiocciPico.Utils do
       {:ok, %{data: data, measurements: measurements}} ->
         key =
           cond do
-            String.contains?(key, "/register/client/") -> :client_recv_timestamp_from_relay
-            String.contains?(key, "/inquiry_engine/client/") -> :client_recv_timestamp_from_relay
-            String.contains?(key, "/exec_func/client/") -> :client_recv_timestamp_from_engine
+            contains?(key, "/register/client/") -> :client_recv_timestamp_from_relay
+            contains?(key, "/inquiry_engine/client/") -> :client_recv_timestamp_from_relay
+            contains?(key, "/exec_func/client/") -> :client_recv_timestamp_from_engine
             true -> raise "Unexpected condition reached"
           end
 
@@ -102,7 +102,7 @@ defmodule GiocciPico.Utils do
 
       {:ok, list} when is_list(list) ->
         key =
-          if String.contains?(key, "/save_module/client/") do
+          if contains?(key, "/save_module/client/") do
             :client_recv_timestamp_from_relay
           else
             raise "Unexpected condition reached"
@@ -121,4 +121,6 @@ defmodule GiocciPico.Utils do
         recv_term
     end
   end
+
+  defp contains?(key, str), do: :binary.match(key, str) != :nomatch
 end

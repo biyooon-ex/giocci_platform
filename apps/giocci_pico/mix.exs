@@ -39,10 +39,8 @@ defmodule GiocciPico.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:exatomvm,
-       git: "https://github.com/atomvm/exatomvm.git",
-       ref: "a99323a1054adda1ec00e9997bc41bc7317a3826",
-       override: true},
+      {:exatomvm, github: "atomvm/exatomvm", runtime: false, override: true},
+      {:atomvm, "~> 0.7.0-beta.0", optional: true, runtime: false},
       {:zenohex_pico,
        git: "git@github.com:biyooon-ex/zenohex_pico.git",
        ref: "a758ed29af87413e5d320ac6a7776fab8778e5a0"},

@@ -34,9 +34,16 @@ defmodule GiocciPico.Sample.Test do
 
     # Offload calculation
     relay_name = "giocci_relay"
+
     :ok = GiocciPico.register_client(relay_name)
+
     :ok = GiocciPico.save_module(relay_name, GiocciPico.Sample.Module)
+
     3 = GiocciPico.exec_func(relay_name, {GiocciPico.Sample.Module, :add, [1, 2]})
+
+    # We can invoke a function on the remote node even if AtomVM doesn't support it.
+    [1, 2, 3] =
+      GiocciPico.exec_func(relay_name, {GiocciPico.Sample.Module, :uniq, [[1, 2, 3, 2, 1]]})
 
     :ok
   end

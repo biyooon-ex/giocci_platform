@@ -284,7 +284,7 @@ defmodule GiocciPico.Worker do
     end
   end
 
-  def join(_key_prefix = "", key), do: key
+  def join("" = _key_prefix, key), do: key
   def join(key_prefix, key), do: "#{key_prefix}/#{key}"
 
   def uniq(enumerable) do

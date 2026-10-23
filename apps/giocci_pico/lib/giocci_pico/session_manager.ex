@@ -25,7 +25,7 @@ defmodule GiocciPico.SessionManager do
         {:ok, %{session: session}}
 
       {:error, reason} ->
-        IO.inspect("Failed to open Zenoh session: #{inspect(reason)}")
+        IO.puts("Failed to open Zenoh session: #{inspect(reason)}")
         {:stop, {:zenoh_session_open_failed, reason}}
     end
   end

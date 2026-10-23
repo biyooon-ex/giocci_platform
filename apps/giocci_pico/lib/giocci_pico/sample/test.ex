@@ -1,4 +1,6 @@
 defmodule GiocciPico.Sample.Test do
+  @moduledoc false
+
   @compile {:no_warn_undefined, [:esp, :network]}
   @host_ipv4_address (
                        ipv4_address = ~S/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/

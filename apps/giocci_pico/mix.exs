@@ -17,6 +17,9 @@ defmodule GiocciPico.MixProject do
         flash_offset: 0x290000
       ],
       aliases: [
+        # Without --no-start, running mix test from the umbrella root starts all
+        # umbrella apps.
+        test: ["test --no-start"],
         flash: [
           "atomvm.packbeam",
           "atomvm.esp32.flash --port /dev/ttyACM0 --baud 921600"

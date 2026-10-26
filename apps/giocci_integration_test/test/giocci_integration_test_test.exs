@@ -6,6 +6,7 @@ defmodule GiocciIntegrationTestTest do
   @relay_name "giocci_relay"
   @engine_name "giocci_engine"
   @client_name "giocci"
+  @pico_client_name "giocci_pico"
   @giocci_zenoh_config_path Path.expand("../../giocci/config/zenoh.json5", __DIR__)
   @giocci_relay_zenoh_config_path Path.expand("../../giocci_relay/config/zenoh.json5", __DIR__)
   @giocci_engine_zenoh_config_path Path.expand("../../giocci_engine/config/zenoh.json5", __DIR__)
@@ -17,11 +18,26 @@ defmodule GiocciIntegrationTestTest do
 
   # Common setup for starting relay and client
   defp setup_relay_and_client do
+    # GiocciRelay
     :ok = Application.put_env(:giocci_relay, :relay_name, @relay_name)
     {:ok, _} = Application.ensure_all_started(:giocci_relay)
 
+    # Giocci
     :ok = Application.put_env(:giocci, :client_name, @client_name)
     {:ok, _} = Application.ensure_all_started(:giocci)
+
+    # GiocciPico
+    {:ok, config} = ZenohexPico.Config.default()
+    {:ok, config} = ZenohexPico.Config.insert(config, :mode, "client")
+
+    {:ok, config} =
+      ZenohexPico.Config.insert(config, :connect, "tcp/localhost:7447")
+
+    {:ok, _} =
+      start_supervised(
+        {GiocciPico.Supervisor,
+         zenohex_pico_config: config, client_name: @pico_client_name, key_prefix: ""}
+      )
 
     on_exit(fn ->
       :ok = Application.stop(:giocci)
@@ -69,6 +85,19 @@ defmodule GiocciIntegrationTestTest do
                    "Expected async response with result 3"
   end
 
+  defp assert_giocci_pico_normal_scenario_works do
+    assert :ok == GiocciPico.register_client(@relay_name)
+    assert :ok == GiocciPico.save_module(@relay_name, GiocciIntegrationTest)
+
+    assert 3 == GiocciPico.exec_func(@relay_name, {GiocciIntegrationTest, :add, [1, 2]})
+
+    assert {:error, "function_not_defined: {GiocciIntegrationTest, :undefined_function, []}"} ==
+             GiocciPico.exec_func(
+               @relay_name,
+               {GiocciIntegrationTest, :undefined_function, []}
+             )
+  end
+
   describe "happy path" do
     setup do
       setup_relay_and_client()
@@ -76,8 +105,12 @@ defmodule GiocciIntegrationTestTest do
       :ok
     end
 
-    test "normal scenario" do
+    test "giocci normal scenario" do
       assert_giocci_normal_scenario_works()
+    end
+
+    test "giocci pico normal scenario" do
+      assert_giocci_pico_normal_scenario_works()
     end
   end
 

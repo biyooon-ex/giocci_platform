@@ -17,7 +17,7 @@ defmodule GiocciPico.Sample.Test do
 
     # Prepare ZenohexPico
     {:ok, config} = ZenohexPico.Config.default()
-    {:ok, config} = ZenohexPico.Config.insert(config, :mode, "peer")
+    {:ok, config} = ZenohexPico.Config.insert(config, :mode, "client")
 
     {:ok, config} =
       ZenohexPico.Config.insert(config, :connect, "tcp/#{@zenohd_ipv4_address}:7447")

@@ -3,6 +3,8 @@ defmodule GiocciPico.Sample.Test do
 
   @compile {:no_warn_undefined, [:esp, :network]}
   @zenohd_ipv4_address "192.168.0.95"
+  @relay_name "giocci_relay"
+  @client_name "giocci_pico"
 
   def start do
     # Call these once to configure your Wi-Fi station.
@@ -26,22 +28,20 @@ defmodule GiocciPico.Sample.Test do
     {:ok, _pid} =
       GiocciPico.Supervisor.start_link(
         zenohex_pico_config: config,
-        client_name: "giocci_pico",
+        client_name: @client_name,
         key_prefix: ""
       )
 
     # Offload calculation
-    relay_name = "giocci_relay"
+    :ok = GiocciPico.register_client(@relay_name)
 
-    :ok = GiocciPico.register_client(relay_name)
+    :ok = GiocciPico.save_module(@relay_name, GiocciPico.Sample.Module)
 
-    :ok = GiocciPico.save_module(relay_name, GiocciPico.Sample.Module)
-
-    3 = GiocciPico.exec_func(relay_name, {GiocciPico.Sample.Module, :add, [1, 2]})
+    3 = GiocciPico.exec_func(@relay_name, {GiocciPico.Sample.Module, :add, [1, 2]})
 
     # We can invoke a function on the remote node even if AtomVM doesn't support it.
     [1, 2, 3] =
-      GiocciPico.exec_func(relay_name, {GiocciPico.Sample.Module, :uniq, [[1, 2, 3, 2, 1]]})
+      GiocciPico.exec_func(@relay_name, {GiocciPico.Sample.Module, :uniq, [[1, 2, 3, 2, 1]]})
 
     :ok
   end

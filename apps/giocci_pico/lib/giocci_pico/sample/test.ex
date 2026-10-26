@@ -2,12 +2,8 @@ defmodule GiocciPico.Sample.Test do
   @moduledoc false
 
   @compile {:no_warn_undefined, [:esp, :network]}
-  @host_ipv4_address (
-                       ipv4_address = ~S/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/
-                       {route, 0} = System.cmd("ip", ["-4", "route", "get", "1.1.1.1"])
-                       [_, host] = Regex.run(~r/\bsrc\s+(#{ipv4_address})\b/, route)
-                       host
-                     )
+  @zenohd_ipv4_address "192.168.0.95"
+
   def start do
     # Call these once to configure your Wi-Fi station.
     # :esp.nvs_put_binary(:atomvm, :sta_ssid, "SSID")
@@ -24,7 +20,7 @@ defmodule GiocciPico.Sample.Test do
     {:ok, config} = ZenohexPico.Config.insert(config, :mode, "peer")
 
     {:ok, config} =
-      ZenohexPico.Config.insert(config, :connect, "tcp/#{@host_ipv4_address}:7447")
+      ZenohexPico.Config.insert(config, :connect, "tcp/#{@zenohd_ipv4_address}:7447")
 
     # Start GiocciPico.Supervisor
     {:ok, _pid} =

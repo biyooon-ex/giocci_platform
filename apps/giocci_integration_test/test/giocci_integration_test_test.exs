@@ -51,7 +51,7 @@ defmodule GiocciIntegrationTestTest do
     :ok
   end
 
-  defp assert_normal_scenario_works do
+  defp assert_giocci_normal_scenario_works do
     assert :ok == Giocci.register_client(@relay_name)
     assert :ok == Giocci.save_module(@relay_name, GiocciIntegrationTest)
     assert 3 == Giocci.exec_func(@relay_name, {GiocciIntegrationTest, :add, [1, 2]})
@@ -77,7 +77,7 @@ defmodule GiocciIntegrationTestTest do
     end
 
     test "normal scenario" do
-      assert_normal_scenario_works()
+      assert_giocci_normal_scenario_works()
     end
   end
 
@@ -185,7 +185,7 @@ defmodule GiocciIntegrationTestTest do
       setup_relay_and_client()
       setup_engine()
 
-      assert_normal_scenario_works()
+      assert_giocci_normal_scenario_works()
     end
 
     test "multiple comma-separated endpoints with spaces: connects and works" do
@@ -197,7 +197,7 @@ defmodule GiocciIntegrationTestTest do
       setup_relay_and_client()
       setup_engine()
 
-      assert_normal_scenario_works()
+      assert_giocci_normal_scenario_works()
     end
 
     test "trailing comma with whitespace: whitespace-only segments are ignored" do
@@ -205,7 +205,7 @@ defmodule GiocciIntegrationTestTest do
       setup_relay_and_client()
       setup_engine()
 
-      assert_normal_scenario_works()
+      assert_giocci_normal_scenario_works()
     end
 
     test "empty string: does not override connect.endpoints and normal scenario works" do
@@ -213,7 +213,7 @@ defmodule GiocciIntegrationTestTest do
       setup_relay_and_client()
       setup_engine()
 
-      assert_normal_scenario_works()
+      assert_giocci_normal_scenario_works()
     end
 
     test "commas-only: does not override connect.endpoints and normal scenario works" do
@@ -221,7 +221,7 @@ defmodule GiocciIntegrationTestTest do
       setup_relay_and_client()
       setup_engine()
 
-      assert_normal_scenario_works()
+      assert_giocci_normal_scenario_works()
     end
   end
 
@@ -258,7 +258,7 @@ defmodule GiocciIntegrationTestTest do
       setup_relay_and_client()
       setup_engine()
 
-      assert_normal_scenario_works()
+      assert_giocci_normal_scenario_works()
     end
   end
 

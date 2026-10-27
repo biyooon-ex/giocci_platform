@@ -1,5 +1,8 @@
 name: CI
 
+env:
+  ZENOHEX_PICO_AUTO_INIT_SUBMODULE: true
+
 on:
   push:
   pull_request:
@@ -32,6 +35,11 @@ jobs:
         run: |
           mix local.hex --force
           mix local.rebar --force
+
+      - name: Install git
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends git build-essential cmake
 
       - name: Install dependencies
         run: mix deps.get

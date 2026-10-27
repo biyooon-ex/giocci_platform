@@ -1,6 +1,6 @@
 # GiocciRelay
 
-GiocciRelay is a relay component for the GiocciPlatform that forwards messages between Zenoh networks.
+GiocciRelay registers clients and Engines, stores and distributes modules, and selects an Engine for execution. Clients send execution requests directly to the selected Engine.
 
 ## Prerequisites
 
@@ -58,6 +58,18 @@ docker compose up -d giocci_relay
   - **Important**: This path must match the volume mount destination in `docker-compose.yml`
   - If you change this path, update the corresponding volume mount in `docker-compose.yml`
 - `relay_name`: Unique identifier for this relay instance
+- `engine_selection_policy`: Module implementing `GiocciRelay.EngineSelectionPolicy`
+  (default: `GiocciRelay.EngineSelectionPolicy.RoundRobin`). Set at Relay startup;
+  runtime policy switching is not supported.
+- `engine_selection_policy_opts`: Initial options passed to the policy (default: `[]`).
+  Invalid policy modules or options prevent the Relay from starting.
+
+By default, Engines are selected round-robin in successful registration order.
+New Engines are appended; re-registering the same name keeps its place. Engine
+unregistration removes it from the candidates without resetting the rotation.
+Selection distributes inquiries, not CPU load, and does not check Engine health.
+`Giocci.Inspect.list_engines/1` continues to sort names alphabetically, rather than
+showing selection order.
 
 ### config/zenoh.json5
 

@@ -7,6 +7,7 @@ defmodule GiocciEngine.Application do
 
   @impl true
   def start(_type, _args) do
+    started_at_ms = System.monotonic_time(:millisecond)
     zenoh_config_file_path = Application.get_env(:giocci_engine, :zenoh_config_file_path)
     engine_name = Application.fetch_env!(:giocci_engine, :engine_name)
     key_prefix = Application.get_env(:giocci_engine, :key_prefix, "")
@@ -33,6 +34,12 @@ defmodule GiocciEngine.Application do
          key_prefix: key_prefix,
          relay_name: relay_name
        ]},
+      {GiocciEngine.InspectHandler,
+       [
+         engine_name: engine_name,
+         key_prefix: key_prefix,
+         started_at_ms: started_at_ms
+       ]},
       {GiocciEngine.EngineRegistrar,
        [
          engine_name: engine_name,
@@ -45,5 +52,11 @@ defmodule GiocciEngine.Application do
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: GiocciEngine.Supervisor]
     Supervisor.start_link(children, opts)
+  end
+
+  @impl true
+  def prep_stop(state) do
+    GiocciEngine.EngineRegistrar.unregister()
+    state
   end
 end

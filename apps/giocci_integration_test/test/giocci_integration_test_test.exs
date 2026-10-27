@@ -1,5 +1,22 @@
+defmodule GiocciIntegrationTest.SelectionPolicy do
+  @behaviour GiocciRelay.EngineSelectionPolicy
+
+  @impl true
+  def init(opts), do: {:ok, Keyword.fetch!(opts, :test_pid)}
+
+  @impl true
+  def candidates_changed(_old, _new, test_pid), do: test_pid
+
+  @impl true
+  def select([engine | _], request, test_pid) do
+    send(test_pid, {:engine_selected, request})
+    {:ok, engine, test_pid}
+  end
+end
+
 defmodule GiocciIntegrationTestTest do
   use ExUnit.Case
+  import ExUnit.CaptureLog
 
   @moduletag capture_log: true
 
@@ -11,8 +28,6 @@ defmodule GiocciIntegrationTestTest do
   @giocci_relay_zenoh_config_path Path.expand("../../giocci_relay/config/zenoh.json5", __DIR__)
   @giocci_engine_zenoh_config_path Path.expand("../../giocci_engine/config/zenoh.json5", __DIR__)
 
-  # Timeout for waiting engine response after it's stopped
-  @engine_stopped_timeout 1000
   # Timeout for async message delivery
   @async_message_timeout 1000
 
@@ -67,6 +82,84 @@ defmodule GiocciIntegrationTestTest do
     :ok
   end
 
+  defp await_matching(expected) do
+    receive do
+      %Zenohex.Matching.Status{matching: ^expected} -> :ok
+      %Zenohex.Matching.Status{} -> await_matching(expected)
+    after
+      5_000 -> flunk("relay queryable matching did not become #{expected}")
+    end
+  end
+
+  defp watch_relay_queryable(key) do
+    {:ok, querier} = Zenohex.Session.declare_querier(Giocci.SessionManager.session_id(), key)
+    {:ok, listener} = Zenohex.Matching.declare_listener(querier)
+
+    on_exit(fn ->
+      :ok = Zenohex.Matching.undeclare_listener(listener)
+      :ok = Zenohex.Querier.undeclare(querier)
+    end)
+
+    await_matching(true)
+  end
+
+  defp unregister_engine(engine_name) do
+    unregister_engine_request(%{data: %{engine_name: engine_name}, measurements: %{}})
+  end
+
+  defp unregister_engine_request(term) do
+    key = "giocci/unregister/engine/#{@relay_name}"
+    payload = :erlang.term_to_binary(term)
+
+    {:ok, [%Zenohex.Sample{payload: reply}]} =
+      Zenohex.Session.get(Giocci.SessionManager.session_id(), key, 5_000, payload: payload)
+
+    :erlang.binary_to_term(reply)
+  end
+
+  defp register_fake_engine(engine_name) do
+    session_id = Giocci.SessionManager.session_id()
+    save_key = "giocci/save_module/relay/#{engine_name}"
+    register_key = "giocci/register/engine/#{@relay_name}"
+    {:ok, queryable_id} = Zenohex.Session.declare_queryable(session_id, save_key)
+    payload = :erlang.term_to_binary(%{data: %{engine_name: engine_name}, measurements: %{}})
+
+    task =
+      Task.async(fn ->
+        Zenohex.Session.get(session_id, register_key, 5_000, payload: payload)
+      end)
+
+    assert_receive %Zenohex.Query{key_expr: ^save_key, zenoh_query: query}, 5_000
+
+    assert :ok =
+             GiocciRelay.Utils.zenohex_reply(
+               query,
+               save_key,
+               {:ok, %{data: nil, measurements: %{}}}
+             )
+
+    assert {:ok, [%Zenohex.Sample{payload: reply}]} = Task.await(task, 6_000)
+    assert {:ok, %{data: nil}} = :erlang.binary_to_term(reply)
+    assert :ok = Zenohex.Queryable.undeclare(queryable_id)
+  end
+
+  defp client_registration_request(operation, client_name) do
+    client_registration_request_term(
+      operation,
+      %{data: %{client_name: client_name}, measurements: %{}}
+    )
+  end
+
+  defp client_registration_request_term(operation, term) do
+    key = "giocci/#{operation}/client/#{@relay_name}"
+    payload = :erlang.term_to_binary(term)
+
+    {:ok, [%Zenohex.Sample{payload: reply}]} =
+      Zenohex.Session.get(Giocci.SessionManager.session_id(), key, 5_000, payload: payload)
+
+    :erlang.binary_to_term(reply)
+  end
+
   defp assert_giocci_normal_scenario_works do
     assert :ok == Giocci.register_client(@relay_name)
     assert :ok == Giocci.save_module(@relay_name, GiocciIntegrationTest)
@@ -112,6 +205,178 @@ defmodule GiocciIntegrationTestTest do
     test "giocci pico normal scenario" do
       assert_giocci_pico_normal_scenario_works()
     end
+
+    test "unregistration preserves modules and requires re-registration for save and execution" do
+      assert :ok = Giocci.register_client(@relay_name)
+      assert :ok = Giocci.save_module(@relay_name, GiocciIntegrationTest)
+      assert 3 == Giocci.exec_func(@relay_name, {GiocciIntegrationTest, :add, [1, 2]})
+
+      assert :ok = Giocci.unregister_client(@relay_name, measure_to: self())
+
+      assert_receive {:giocci_measurements,
+                      %{
+                        client_send_timestamp_to_relay: _,
+                        relay_recv_timestamp_from_client: _,
+                        relay_send_timestamp_to_client: _,
+                        client_recv_timestamp_from_relay: _,
+                        client_to_relay: _,
+                        relay_to_client: _
+                      }}
+
+      refute GiocciRelay.ClientRegistrar.registered?(@client_name)
+      assert {:ok, []} = Giocci.Inspect.list_relays()
+      assert {:ok, [GiocciIntegrationTest]} = GiocciRelay.ModuleStore.list(@client_name)
+      assert {:ok, ["Elixir.GiocciIntegrationTest"]} = Giocci.Inspect.list_modules(@relay_name)
+
+      assert {:error, "relay_not_registered"} =
+               Giocci.save_module(@relay_name, GiocciIntegrationTest)
+
+      assert {:error, "relay_not_registered"} =
+               Giocci.exec_func(@relay_name, {GiocciIntegrationTest, :add, [1, 2]})
+
+      assert {:error, "relay_not_registered"} =
+               Giocci.exec_func_async(
+                 @relay_name,
+                 {GiocciIntegrationTest, :add, [1, 2]},
+                 self()
+               )
+
+      assert :ok = Giocci.register_client(@relay_name)
+      assert 3 == Giocci.exec_func(@relay_name, {GiocciIntegrationTest, :add, [1, 2]})
+      assert {:ok, [GiocciIntegrationTest]} = GiocciRelay.ModuleStore.list(@client_name)
+    end
+
+    test "unregistration is idempotent without local history and leaves other clients intact" do
+      assert :ok = Giocci.unregister_client(@relay_name)
+      assert :ok = Giocci.unregister_client(@relay_name)
+
+      assert {:ok, %{data: nil}} = client_registration_request("register", "another-client")
+
+      assert :ok =
+               GiocciRelay.ModuleStore.put(
+                 "another-client",
+                 :code.get_object_code(GiocciIntegrationTest)
+               )
+
+      assert :ok = Giocci.register_client(@relay_name)
+      assert :ok = Giocci.save_module(@relay_name, GiocciIntegrationTest)
+      assert :ok = Giocci.unregister_client(@relay_name)
+      assert :ok = Giocci.unregister_client(@relay_name)
+
+      assert GiocciRelay.ClientRegistrar.registered?("another-client")
+      assert {:ok, [GiocciIntegrationTest]} = GiocciRelay.ModuleStore.list("another-client")
+      assert {:ok, [GiocciIntegrationTest]} = GiocciRelay.ModuleStore.list(@client_name)
+    end
+
+    test "unregistration for a shared name leaves another local registration stale" do
+      assert :ok = Giocci.register_client(@relay_name)
+      assert :ok = Giocci.save_module(@relay_name, GiocciIntegrationTest)
+
+      assert {:ok, %{data: nil}} =
+               client_registration_request("unregister", @client_name)
+
+      assert {:error, [%{relay: @relay_name, reason: "client_not_registered"}]} =
+               Giocci.Inspect.list_relays()
+
+      assert {:error, "client_not_registered"} =
+               Giocci.exec_func(@relay_name, {GiocciIntegrationTest, :add, [1, 2]})
+
+      assert {:ok, %{data: nil}} = client_registration_request("register", @client_name)
+      assert 3 == Giocci.exec_func(@relay_name, {GiocciIntegrationTest, :add, [1, 2]})
+
+      assert :ok = Giocci.unregister_client(@relay_name)
+      assert {:ok, []} = Giocci.Inspect.list_relays()
+    end
+
+    test "dynamically compiled module is saved and updated" do
+      module = GiocciIntegrationTest.DynamicModule
+      Code.compiler_options(ignore_module_conflict: true)
+
+      [{^module, _beam}] =
+        Code.compile_string("""
+        defmodule #{inspect(module)} do
+          use Giocci.DynamicModule
+          def add(a, b), do: a + b
+        end
+        """)
+
+      assert :ok == Giocci.register_client(@relay_name)
+      assert :ok == Giocci.save_module(@relay_name, module)
+      assert 3 == Giocci.exec_func(@relay_name, {module, :add, [1, 2]})
+
+      [{^module, _updated_beam}] =
+        Code.compile_string("""
+        defmodule #{inspect(module)} do
+          use Giocci.DynamicModule
+          def add(a, b), do: a + b + 1
+        end
+        """)
+
+      assert :ok == Giocci.save_module(@relay_name, module)
+      assert 4 == Giocci.exec_func(@relay_name, {module, :add, [1, 2]})
+    end
+  end
+
+  describe "configured Engine selection policy" do
+    setup do
+      :ok =
+        Application.put_env(
+          :giocci_relay,
+          :engine_selection_policy,
+          GiocciIntegrationTest.SelectionPolicy
+        )
+
+      :ok = Application.put_env(:giocci_relay, :engine_selection_policy_opts, test_pid: self())
+
+      on_exit(fn ->
+        :ok = Application.delete_env(:giocci_relay, :engine_selection_policy)
+        :ok = Application.delete_env(:giocci_relay, :engine_selection_policy_opts)
+      end)
+
+      setup_relay_and_client()
+      setup_engine()
+      :ok
+    end
+
+    test "both synchronous and asynchronous execution use the configured policy" do
+      mfargs = {GiocciIntegrationTest, :add, [1, 2]}
+      assert :ok = Giocci.register_client(@relay_name)
+      assert :ok = Giocci.save_module(@relay_name, GiocciIntegrationTest)
+
+      assert 3 == Giocci.exec_func(@relay_name, mfargs)
+      assert_receive {:engine_selected, %{mfargs: ^mfargs, client_name: @client_name}}
+
+      assert :ok = Giocci.exec_func_async(@relay_name, mfargs, self())
+      assert_receive {:engine_selected, %{mfargs: ^mfargs, client_name: @client_name}}
+      assert_receive {:giocci, 3}, @async_message_timeout
+    end
+  end
+
+  test "concurrent Engine selections advance the rotation once per inquiry" do
+    setup_relay_and_client()
+    Enum.each(["A", "B", "C"], &register_fake_engine/1)
+
+    assert ["A", "B", "C"] == GiocciRelay.EngineRegistrar.registered_engines()
+    assert {:ok, "A"} = GiocciRelay.EngineRegistrar.select_engine(%{})
+    assert {:ok, "B"} = GiocciRelay.EngineRegistrar.select_engine(%{})
+    register_fake_engine("B")
+    assert ["A", "B", "C"] == GiocciRelay.EngineRegistrar.registered_engines()
+    assert {:ok, "C"} = GiocciRelay.EngineRegistrar.select_engine(%{})
+
+    selections =
+      1..60
+      |> Task.async_stream(
+        fn _ -> GiocciRelay.EngineRegistrar.select_engine(%{client_name: @client_name}) end,
+        max_concurrency: 20
+      )
+      |> Enum.map(fn {:ok, {:ok, engine}} -> engine end)
+
+    assert Enum.frequencies(selections) == %{"A" => 20, "B" => 20, "C" => 20}
+
+    assert {:ok, %{data: nil}} = unregister_engine("B")
+    assert ["A", "C"] == GiocciRelay.EngineRegistrar.registered_engines()
+    assert {:ok, "A"} = GiocciRelay.EngineRegistrar.select_engine(%{})
+    assert {:ok, "C"} = GiocciRelay.EngineRegistrar.select_engine(%{})
   end
 
   describe "engine start timing" do
@@ -146,6 +411,88 @@ defmodule GiocciIntegrationTestTest do
   end
 
   describe "error cases" do
+    test "malformed client registration requests preserve existing registrations" do
+      setup_relay_and_client()
+      assert :ok = Giocci.register_client(@relay_name)
+      assert {:ok, %{data: nil}} = client_registration_request("register", "another-client")
+
+      registrar = Process.whereis(GiocciRelay.ClientRegistrar)
+
+      for operation <- ["register", "unregister"],
+          term <- [
+            %{},
+            %{measurements: %{}},
+            %{data: %{client_name: @client_name}},
+            %{data: %{client_name: @client_name}, measurements: []},
+            %{data: %{client_name: nil}, measurements: %{}},
+            %{data: [], measurements: %{}}
+          ] do
+        assert {:error, "term_not_expected"} ==
+                 client_registration_request_term(operation, term)
+
+        assert Process.whereis(GiocciRelay.ClientRegistrar) == registrar
+        assert GiocciRelay.ClientRegistrar.registered?(@client_name)
+        assert GiocciRelay.ClientRegistrar.registered?("another-client")
+      end
+
+      assert :ok = Giocci.unregister_client(@relay_name)
+      refute GiocciRelay.ClientRegistrar.registered?(@client_name)
+      assert GiocciRelay.ClientRegistrar.registered?("another-client")
+    end
+
+    test "unregistration failure keeps local registration and can be retried" do
+      setup_relay_and_client()
+      assert :ok = Giocci.register_client(@relay_name)
+      watch_relay_queryable("giocci/unregister/client/#{@relay_name}")
+      assert :ok = Application.stop(:giocci_relay)
+      await_matching(false)
+
+      assert {:error, reason} = Giocci.unregister_client(@relay_name, timeout: 250)
+
+      assert String.starts_with?(reason, "connection_failed:") or
+               String.starts_with?(reason, "timeout:")
+
+      assert %{registered_relays: [@relay_name]} = Giocci.Worker.inspection_info()
+
+      {:ok, _} = Application.ensure_all_started(:giocci_relay)
+      await_matching(true)
+      assert :ok = Giocci.unregister_client(@relay_name)
+      assert {:ok, []} = Giocci.Inspect.list_relays()
+    end
+
+    test "redefining a dynamic module without use does not replace the saved BEAM" do
+      setup_relay_and_client()
+      setup_engine()
+      module = GiocciIntegrationTest.StaleDynamicModule
+      Code.compiler_options(ignore_module_conflict: true)
+
+      [{^module, saved_beam}] =
+        Code.compile_string("""
+        defmodule #{inspect(module)} do
+          use Giocci.DynamicModule
+          def add(a, b), do: a + b
+        end
+        """)
+
+      assert :ok == Giocci.register_client(@relay_name)
+      assert :ok == Giocci.save_module(@relay_name, module)
+      assert 3 == Giocci.exec_func(@relay_name, {module, :add, [1, 2]})
+
+      [{^module, _untracked_beam}] =
+        Code.compile_string("""
+        defmodule #{inspect(module)} do
+          def add(a, b), do: a + b + 1
+        end
+        """)
+
+      assert 4 == apply(module, :add, [1, 2])
+      assert {:error, "dynamic_module_stale"} == Giocci.save_module(@relay_name, module)
+
+      # Client and engine share this VM, so local redefinition also changes the engine's loaded code.
+      assert {:ok, stored_modules} = GiocciRelay.ModuleStore.get()
+      assert [{^module, ^saved_beam, _filename}] = stored_modules[@client_name]
+    end
+
     test "relay not started - register_client fails" do
       :ok = Application.put_env(:giocci, :client_name, @client_name)
       {:ok, _} = Application.ensure_all_started(:giocci)
@@ -175,7 +522,7 @@ defmodule GiocciIntegrationTestTest do
                Giocci.exec_func(@relay_name, {GiocciIntegrationTest, :add, [1, 2]})
     end
 
-    test "engine registered then stopped - exec_func fails" do
+    test "engine registered then stopped is removed from selection and registers again on restart" do
       setup_relay_and_client()
       setup_engine()
 
@@ -188,19 +535,73 @@ defmodule GiocciIntegrationTestTest do
       # Stop engine manually (on_exit will handle cleanup if this fails)
       cleanup_engine()
 
-      # Engine is no longer available - Zenoh channel is closed
-      result =
-        Giocci.exec_func(@relay_name, {GiocciIntegrationTest, :add, [1, 2]},
-          timeout: @engine_stopped_timeout
-        )
+      assert [] == GiocciRelay.EngineRegistrar.registered_engines()
+      assert {:ok, []} == Giocci.Inspect.list_engines(@relay_name)
 
-      assert {:error, error_msg} = result
+      assert {:ok, [GiocciIntegrationTest]} ==
+               GiocciRelay.ModuleStore.list(@client_name)
 
-      assert String.starts_with?(error_msg, "connection_failed: "),
-             "Expected connection_failed after engine stopped but got: #{inspect(result)}"
+      assert {:error, "engine_not_registered"} ==
+               Giocci.exec_func(@relay_name, {GiocciIntegrationTest, :add, [1, 2]})
 
-      assert String.contains?(error_msg, "may not be running"),
-             "Expected 'may not be running' message but got: #{inspect(result)}"
+      setup_engine()
+      assert {:ok, [@engine_name]} == Giocci.Inspect.list_engines(@relay_name)
+      assert 3 == Giocci.exec_func(@relay_name, {GiocciIntegrationTest, :add, [1, 2]})
+    end
+
+    test "unregistering an unknown or already removed engine succeeds without removing others" do
+      setup_relay_and_client()
+      setup_engine()
+
+      assert :ok == Giocci.register_client(@relay_name)
+      assert :ok == Giocci.save_module(@relay_name, GiocciIntegrationTest)
+
+      assert {:ok, %{data: nil}} = unregister_engine("unknown_engine")
+      assert {:ok, [@engine_name]} == Giocci.Inspect.list_engines(@relay_name)
+
+      cleanup_engine()
+      assert {:ok, %{data: nil}} = unregister_engine(@engine_name)
+      assert {:ok, []} == Giocci.Inspect.list_engines(@relay_name)
+      assert {:ok, [GiocciIntegrationTest]} == GiocciRelay.ModuleStore.list(@client_name)
+    end
+
+    test "malformed unregister requests do not reset engine registrations" do
+      setup_relay_and_client()
+      setup_engine()
+
+      registrar = Process.whereis(GiocciRelay.EngineRegistrar)
+
+      for term <- [
+            %{data: %{engine_name: @engine_name}},
+            %{measurements: %{}},
+            %{data: %{engine_name: @engine_name}, measurements: []},
+            %{data: %{engine_name: nil}, measurements: %{}}
+          ] do
+        assert {:error, "term_not_expected"} == unregister_engine_request(term)
+        assert Process.whereis(GiocciRelay.EngineRegistrar) == registrar
+        assert [@engine_name] == GiocciRelay.EngineRegistrar.registered_engines()
+      end
+    end
+
+    test "engine stops within a bounded time when relay does not reply to unregistration" do
+      setup_relay_and_client()
+      setup_engine()
+
+      :ok = :sys.suspend(GiocciRelay.EngineRegistrar)
+
+      try do
+        log =
+          capture_log(fn ->
+            {elapsed_us, :ok} = :timer.tc(fn -> cleanup_engine() end)
+            assert elapsed_us >= 4_000_000
+            assert elapsed_us < 8_000_000
+          end)
+
+        assert log =~ "Engine unregistration failed"
+        assert log =~ "timeout:"
+      after
+        :ok = :sys.resume(GiocciRelay.EngineRegistrar)
+      end
     end
   end
 
@@ -374,6 +775,286 @@ defmodule GiocciIntegrationTestTest do
                         client_to_relay: _,
                         relay_to_client: _
                       }}
+    end
+  end
+
+  describe "inspection" do
+    @describetag :inspect
+
+    test "local information and relay inspection work without registration or engines" do
+      setup_relay_and_client()
+
+      assert {:ok,
+              %{
+                client_name: @client_name,
+                key_prefix: "",
+                zenoh_id: zenoh_id,
+                router_ids: router_ids,
+                peer_ids: peer_ids
+              }} = Giocci.Inspect.connection_info()
+
+      assert is_binary(zenoh_id)
+      assert is_list(router_ids)
+      assert is_list(peer_ids)
+      assert {:ok, []} = Giocci.Inspect.list_relays()
+      assert {:ok, []} = Giocci.Inspect.list_engines(@relay_name)
+      assert {:ok, []} = Giocci.Inspect.list_modules(@relay_name)
+
+      assert {:error, "module_not_found"} =
+               Giocci.Inspect.list_functions(@relay_name, GiocciIntegrationTest)
+
+      assert {:error, "module_not_found"} =
+               Giocci.Inspect.module_info(@relay_name, GiocciIntegrationTest)
+
+      assert {:ok, relay_info} = Giocci.Inspect.relay_info(@relay_name)
+      assert relay_info.name == @relay_name
+      assert relay_info.giocci_version == to_string(Application.spec(:giocci_relay, :vsn))
+      assert relay_info.elixir_version == System.version()
+      assert relay_info.otp_release == System.otp_release()
+      assert is_binary(relay_info.system_architecture)
+      assert is_integer(relay_info.uptime_ms) and relay_info.uptime_ms >= 0
+      assert is_integer(relay_info.schedulers_online) and relay_info.schedulers_online > 0
+      assert {:ok, %{rtt_ms: rtt}} = Giocci.Inspect.ping_relay(@relay_name)
+      assert rtt >= 0
+      assert {:ok, []} = Giocci.Inspect.list_relays()
+    end
+
+    test "registered engines are listed and queried directly without client registration" do
+      setup_relay_and_client()
+      setup_engine()
+
+      assert {:ok, [@engine_name]} = Giocci.Inspect.list_engines(@relay_name)
+      assert {:ok, engine_info} = Giocci.Inspect.engine_info(@engine_name)
+      assert engine_info.name == @engine_name
+      assert engine_info.giocci_version == to_string(Application.spec(:giocci_engine, :vsn))
+      assert engine_info.elixir_version == System.version()
+      assert engine_info.otp_release == System.otp_release()
+      assert is_binary(engine_info.system_architecture)
+      assert is_integer(engine_info.uptime_ms) and engine_info.uptime_ms >= 0
+      assert is_integer(engine_info.schedulers_online) and engine_info.schedulers_online > 0
+      assert {:ok, %{rtt_ms: rtt}} = Giocci.Inspect.ping_engine(@engine_name)
+      assert rtt >= 0
+      assert {:ok, []} = Giocci.Inspect.list_relays()
+
+      cleanup_engine()
+      assert {:ok, []} = Giocci.Inspect.list_engines(@relay_name)
+      assert {:error, reason} = Giocci.Inspect.ping_engine(@engine_name, timeout: 250)
+
+      assert String.starts_with?(reason, "connection_failed:") or
+               String.starts_with?(reason, "timeout:")
+    end
+
+    test "multiple queryables on the same inspection key report an ambiguous reply" do
+      setup_relay_and_client()
+      key = "giocci/inspect/relay/#{@relay_name}"
+
+      {:ok, queryable_id} =
+        Zenohex.Session.declare_queryable(Giocci.SessionManager.session_id(), key)
+
+      task = Task.async(fn -> Giocci.Inspect.list_engines(@relay_name, timeout: 1_000) end)
+      assert_receive %Zenohex.Query{key_expr: ^key, zenoh_query: query}, 1_000
+
+      {:ok, payload} = Giocci.Utils.encode({:ok, %{data: [], measurements: %{}}})
+      assert :ok = Zenohex.Query.reply(query, key, payload)
+
+      assert {:error, reason} = Task.await(task, 1_500)
+      assert reason == "zenohex_error: expected one reply for '#{key}', got 2"
+      assert :ok = Zenohex.Queryable.undeclare(queryable_id)
+    end
+
+    test "a key prefix containing inspect preserves ordinary registration and save results" do
+      prefix = "tenant/inspect/demo"
+      previous_client_prefix = Application.get_env(:giocci, :key_prefix)
+      previous_relay_prefix = Application.get_env(:giocci_relay, :key_prefix)
+      :ok = Application.put_env(:giocci, :key_prefix, prefix)
+      :ok = Application.put_env(:giocci_relay, :key_prefix, prefix)
+
+      on_exit(fn ->
+        for {app, previous} <- [
+              {:giocci, previous_client_prefix},
+              {:giocci_relay, previous_relay_prefix}
+            ] do
+          if is_nil(previous) do
+            Application.delete_env(app, :key_prefix)
+          else
+            Application.put_env(app, :key_prefix, previous)
+          end
+        end
+      end)
+
+      setup_relay_and_client()
+      assert :ok = Giocci.register_client(@relay_name, measure_to: self())
+
+      assert_receive {:giocci_measurements,
+                      %{
+                        client_send_timestamp_to_relay: _,
+                        client_recv_timestamp_from_relay: _,
+                        client_to_relay: _
+                      }}
+
+      assert :ok = Giocci.save_module(@relay_name, GiocciIntegrationTest)
+      assert {:ok, [@relay_name]} = Giocci.Inspect.list_relays()
+
+      assert {:ok, ["Elixir.GiocciIntegrationTest"]} =
+               Giocci.Inspect.list_modules(@relay_name)
+    end
+
+    test "saved module information and functions reflect the relay's BEAM, not loaded code" do
+      setup_relay_and_client()
+      module = GiocciIntegrationTest.InspectedModule
+      module_name = Atom.to_string(module)
+      on_exit(fn -> :persistent_term.erase({Giocci.DynamicModule, module}) end)
+      Code.compiler_options(ignore_module_conflict: true)
+
+      [{^module, beam}] =
+        Code.compile_string("""
+        defmodule #{inspect(module)} do
+          use Giocci.DynamicModule
+          defstruct [:value]
+          defmacro sample(expr), do: expr
+          def __custom__, do: :ok
+          def add(a, b \\\\ 1), do: a + b
+        end
+        """)
+
+      assert :ok = Giocci.register_client(@relay_name)
+      assert {:ok, [@relay_name]} = Giocci.Inspect.list_relays()
+      assert :ok = Giocci.save_module(@relay_name, module)
+      assert {:ok, [^module_name]} = Giocci.Inspect.list_modules(@relay_name)
+
+      :code.purge(module)
+      assert :code.delete(module)
+      assert :code.is_loaded(module) == false
+
+      assert {:ok, [{"__custom__", 0}, {"add", 1}, {"add", 2}]} =
+               Giocci.Inspect.list_functions(@relay_name, module)
+
+      assert :code.is_loaded(module) == false
+
+      assert {:ok,
+              %{
+                module: ^module_name,
+                beam_sha256: hash,
+                beam_size_bytes: size,
+                saved_at: %DateTime{time_zone: "Etc/UTC"} = saved_at
+              }} = Giocci.Inspect.module_info(@relay_name, module)
+
+      assert hash == Base.encode16(:crypto.hash(:sha256, beam), case: :lower)
+      assert size == byte_size(beam)
+
+      [{^module, _local_beam}] =
+        Code.compile_string("""
+        defmodule #{inspect(module)} do
+          def add(a, b), do: a + b + 10
+        end
+        """)
+
+      assert {:ok, [{"__custom__", 0}, {"add", 1}, {"add", 2}]} =
+               Giocci.Inspect.list_functions(@relay_name, module_name)
+
+      assert {:ok, %{beam_sha256: ^hash, saved_at: ^saved_at}} =
+               Giocci.Inspect.module_info(@relay_name, module_name)
+
+      [{^module, updated_beam}] =
+        Code.compile_string("""
+        defmodule #{inspect(module)} do
+          use Giocci.DynamicModule
+          def add(a, b), do: a + b + 1
+        end
+        """)
+
+      assert :ok = Giocci.save_module(@relay_name, module)
+      assert {:ok, [{"add", 2}]} = Giocci.Inspect.list_functions(@relay_name, module_name)
+
+      assert {:ok, %{beam_sha256: updated_hash, saved_at: updated_at}} =
+               Giocci.Inspect.module_info(@relay_name, module_name)
+
+      assert updated_hash == Base.encode16(:crypto.hash(:sha256, updated_beam), case: :lower)
+      assert updated_hash != hash
+      assert DateTime.compare(updated_at, saved_at) == :gt
+    end
+
+    test "relay restart leaves client history but exposes missing registration" do
+      setup_relay_and_client()
+      assert :ok = Giocci.register_client(@relay_name)
+      assert {:ok, [@relay_name]} = Giocci.Inspect.list_relays()
+
+      watch_relay_queryable("giocci/inspect/relay/#{@relay_name}")
+      assert :ok = Application.stop(:giocci_relay)
+      await_matching(false)
+
+      assert {:error, [%{relay: @relay_name, reason: reason}]} =
+               Giocci.Inspect.list_relays(timeout: 250)
+
+      assert String.starts_with?(reason, "connection_failed:") or
+               String.starts_with?(reason, "timeout:")
+
+      assert {:error, relay_error} = Giocci.Inspect.list_engines(@relay_name, timeout: 250)
+
+      assert String.starts_with?(relay_error, "connection_failed:") or
+               String.starts_with?(relay_error, "timeout:")
+
+      {:ok, _} = Application.ensure_all_started(:giocci_relay)
+      await_matching(true)
+
+      assert {:error, [%{relay: @relay_name, reason: "client_not_registered"}]} =
+               Giocci.Inspect.list_relays()
+
+      log =
+        capture_log(fn ->
+          assert {:error, "client_not_registered"} =
+                   Giocci.save_module(@relay_name, GiocciIntegrationTest)
+        end)
+
+      assert log =~ ~s|Giocci.register_client("#{@relay_name}")|
+
+      assert :ok = Giocci.register_client(@relay_name)
+      assert {:ok, [@relay_name]} = Giocci.Inspect.list_relays()
+    end
+
+    test "invalid stored BEAM is reported without changing stored state" do
+      setup_relay_and_client()
+      module_name = Atom.to_string(GiocciIntegrationTest)
+
+      assert :ok =
+               GiocciRelay.ModuleStore.put(
+                 @client_name,
+                 {GiocciIntegrationTest, <<1>>, ~c"invalid.beam"}
+               )
+
+      assert {:ok, [^module_name]} = Giocci.Inspect.list_modules(@relay_name)
+
+      assert {:error, "invalid_beam"} =
+               Giocci.Inspect.list_functions(@relay_name, module_name)
+
+      assert {:error, "invalid_beam"} =
+               Giocci.Inspect.module_info(@relay_name, module_name)
+
+      assert {:ok, [^module_name]} = Giocci.Inspect.list_modules(@relay_name)
+    end
+
+    test "module queries use only this client's saved module namespace" do
+      setup_relay_and_client()
+
+      assert :ok =
+               GiocciRelay.ModuleStore.put(
+                 "another-client",
+                 :code.get_object_code(GiocciIntegrationTest)
+               )
+
+      assert {:ok, []} = Giocci.Inspect.list_modules(@relay_name)
+
+      assert {:error, "module_not_found"} =
+               Giocci.Inspect.list_functions(@relay_name, GiocciIntegrationTest)
+
+      assert :ok = Giocci.register_client(@relay_name)
+      assert :ok = Giocci.save_module(@relay_name, GiocciIntegrationTest)
+
+      assert {:ok, ["Elixir.GiocciIntegrationTest"]} =
+               Giocci.Inspect.list_modules(@relay_name)
+
+      assert {:ok, [{"add", 2}]} =
+               Giocci.Inspect.list_functions(@relay_name, "Elixir.GiocciIntegrationTest")
     end
   end
 end

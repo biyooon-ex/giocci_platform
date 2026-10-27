@@ -2,6 +2,7 @@ defmodule Giocci.Worker do
   @moduledoc false
 
   use GenServer
+  require Logger
 
   alias Giocci.ExecFuncAsyncStore
   alias Giocci.Utils
@@ -18,16 +19,26 @@ defmodule Giocci.Worker do
     GenServer.call(@name, {:register_client, relay_name, opts}, :infinity)
   end
 
+  def unregister_client(relay_name, opts \\ []) do
+    timeout = Keyword.get(opts, :timeout, @default_timeout)
+    opts = Keyword.put(opts, :timeout, timeout)
+
+    GenServer.call(@name, {:unregister_client, relay_name, opts}, :infinity)
+  end
+
   def save_module(relay_name, module, opts \\ []) do
     timeout = Keyword.get(opts, :timeout, @default_timeout)
     opts = Keyword.put(opts, :timeout, timeout)
 
-    module_object_code = :code.get_object_code(module)
+    case Giocci.DynamicModule.object_code(module) do
+      :error ->
+        {:error, "get_object_code_failed"}
 
-    if module_object_code == :error do
-      {:error, "get_object_code_failed"}
-    else
-      GenServer.call(@name, {:save_module, relay_name, module_object_code, opts}, :infinity)
+      {:error, _reason} = error ->
+        error
+
+      module_object_code ->
+        GenServer.call(@name, {:save_module, relay_name, module_object_code, opts}, :infinity)
     end
   end
 
@@ -43,6 +54,10 @@ defmodule Giocci.Worker do
     opts = Keyword.put(opts, :timeout, timeout)
 
     GenServer.call(@name, {:exec_func_async, relay_name, mfargs, server, opts}, :infinity)
+  end
+
+  def inspection_info do
+    GenServer.call(@name, :inspection_info, :infinity)
   end
 
   def start_link(args) do
@@ -61,6 +76,10 @@ defmodule Giocci.Worker do
        key_prefix: key_prefix,
        registered_relays: []
      }}
+  end
+
+  def handle_call(:inspection_info, _from, state) do
+    {:reply, Map.take(state, [:client_name, :key_prefix, :registered_relays]), state}
   end
 
   def handle_call({:register_client, relay_name, opts}, _from, state) do
@@ -93,6 +112,32 @@ defmodule Giocci.Worker do
     {:reply, result, state}
   end
 
+  def handle_call({:unregister_client, relay_name, opts}, _from, state) do
+    session_id = Giocci.SessionManager.session_id()
+    timeout = Keyword.fetch!(opts, :timeout)
+    measure_to = Keyword.get(opts, :measure_to)
+    key = Path.join(state.key_prefix, "giocci/unregister/client/#{relay_name}")
+    term_to_relay = %{data: %{client_name: state.client_name}, measurements: %{}}
+
+    {result, state} =
+      case Utils.zenohex_get(session_id, key, timeout, term_to_relay) do
+        {:ok, {:ok, %{data: nil, measurements: _} = reply}} ->
+          {{:ok, reply},
+           %{state | registered_relays: List.delete(state.registered_relays, relay_name)}}
+
+        {:ok, {:error, _} = error} ->
+          {error, state}
+
+        {:ok, _unexpected_reply} ->
+          {{:error, "unexpected_reply"}, state}
+
+        error ->
+          {error, state}
+      end
+
+    {:reply, maybe_send_measurements(result, measure_to), state}
+  end
+
   def handle_call({:save_module, relay_name, module_object_code, opts}, _from, state) do
     client_name = state.client_name
     key_prefix = state.key_prefix
@@ -118,6 +163,13 @@ defmodule Giocci.Worker do
            :ok <- validate_module_found(module_object_code),
            key <- Path.join(key_prefix, "giocci/save_module/client/#{relay_name}"),
            {:ok, term_from_relay} <- Utils.zenohex_get(session_id, key, timeout, term_to_relay) do
+        if term_from_relay == {:error, "client_not_registered"} do
+          Logger.warning(
+            "Relay #{inspect(relay_name)} may have lost the client registration (for example after a restart). " <>
+              "Run Giocci.register_client(#{inspect(relay_name)}) before calling save_module again."
+          )
+        end
+
         # NOTE: term_from_relay is a list of {:ok, _} or {:error, _} tuples.
         term_from_relay
       end

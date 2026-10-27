@@ -9,7 +9,7 @@ Add `giocci` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:giocci, "~> 0.6.1"}
+    {:giocci, "~> 0.6.3"}
   ]
 end
 ```
@@ -23,7 +23,7 @@ Configure Giocci in your `config/config.exs`:
 ```elixir
 config :giocci,
   zenoh_config_file_path: "path/to/zenoh.json5",  # Path to Zenoh configuration
-  client_name: "my_client",                       # Unique client identifier
+  client_name: "my_client",                       # Shared namespace for this client name
   key_prefix: ""                                  # Optional key prefix for Zenoh keys
 ```
 
@@ -62,6 +62,14 @@ Save an Elixir module to the relay (which distributes it to engines):
 :ok = Giocci.save_module("giocci_relay", MyModule)
 ```
 
+On a shared Engine, saving another implementation with the same module name
+can replace this code. See [Current behavior and limitations](#current-behavior-and-limitations).
+
+If the relay loses the client registration (for example after a restart),
+`save_module/3` returns `{:error, "client_not_registered"}` and logs a warning.
+Call `Giocci.register_client("giocci_relay")` again before retrying; the
+client does not re-register automatically.
+
 ### 3. Execute Function (Synchronous)
 
 Execute a function on a remote engine:
@@ -98,17 +106,76 @@ defmodule MyServer do
 end
 ```
 
+### 5. Unregister Client
+
+Unregister this client name from a relay explicitly when it is no longer
+needed:
+
+```elixir
+:ok = Giocci.unregister_client("giocci_relay")
+```
+
+Unregistration is explicit and safe to repeat. It does not delete saved
+modules or unload them from engines. Register again with the same client name
+to resume saving and execution without re-saving modules; relay storage is in
+memory and does not survive a restart.
+
+Unregistering a name shared by multiple client instances affects all of them.
+See `Giocci.unregister_client/2` for failure and in-flight request behavior.
+
 ### Options
 
 All functions accept an optional `opts` keyword list:
 
 - `:timeout` - Request timeout in milliseconds (default: 5000)
+- `:measure_to` - PID to receive measurement timestamps as `{:giocci_measurements, timestamps}`
 
 Example:
 
 ```elixir
 Giocci.exec_func("giocci_relay", {MyModule, :add, [1, 2]}, timeout: 10_000)
 ```
+
+## Additional Features
+
+### Saving dynamically defined modules
+
+For a module defined interactively in IEx or Livebook, or compiled with
+`Code.compile_string/2` without writing a BEAM file, opt in to retaining its
+compiled BEAM:
+
+```elixir
+defmodule MyDynamicModule do
+  use Giocci.DynamicModule
+
+  def add(a, b), do: a + b
+end
+
+:ok = Giocci.save_module("giocci_relay", MyDynamicModule)
+```
+
+Include `use Giocci.DynamicModule` each time the module is redefined. If it
+is omitted on redefinition, `save_module` returns
+`{:error, "dynamic_module_stale"}` rather than sending the previous BEAM.
+Without the opt-in or a BEAM file, it returns
+`{:error, "get_object_code_failed"}`. One BEAM per opted-in module is retained
+until the VM exits; redefining that module replaces the retained BEAM. Regular
+Mix modules need no opt-in.
+
+### Inspecting the platform
+
+Use `Giocci.Inspect` to check this client's Zenoh connection, relay and engine
+registrations, saved modules, runtime information, and ping responses.
+
+```elixir
+Giocci.Inspect.connection_info()
+Giocci.Inspect.list_relays()
+Giocci.Inspect.list_modules("giocci_relay")
+Giocci.Inspect.ping_engine("giocci_engine")
+```
+
+`list_relays/1` can return partial results with `:warn`. See the
+`Giocci.Inspect` API documentation for return values and query options.
 
 ## Running with Docker (for Testing)
 
@@ -182,6 +249,26 @@ Common issues:
 - **Relay not found**: Ensure the relay name matches between client config and running relay
 - **Key prefix mismatch**: Verify `key_prefix` is the same across client, relay, and engine configurations
 - **Module not loaded**: Check engine logs for module loading errors
+
+## Current behavior and limitations
+
+- Relay stores modules by client name, but Engines load them into a shared
+  BEAM VM under their original module names. Different client names do not
+  isolate code or runtime state: saving a different implementation with the
+  same module name can replace the code used by another client on that Engine.
+- Execution checks whether the module is loaded on the selected Engine, not
+  whether this client saved it. A registered client may execute a module
+  loaded by another client; client names are not access control. Clients
+  using the same name also share saved modules and registration state.
+- By default, a relay selects Engines round-robin. Consecutive calls from
+  the same client may run on different Engines, whose runtime state is not
+  shared.
+- `save_module/3` stores the BEAM at the relay before distributing it.
+  Returning `:ok` does not guarantee that every Engine loaded it; a timeout
+  may also occur after the relay stored it.
+- `exec_func_async/4` returning `:ok` does not guarantee a result. If
+  execution fails or the result times out, no error message is sent to the
+  result receiver.
 
 ## API Reference
 

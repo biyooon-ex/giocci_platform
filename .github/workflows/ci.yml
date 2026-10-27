@@ -1,7 +1,7 @@
 name: CI
 
 env:
-  ZENOHEX_PICO_CI: true
+  ZENOHEX_PICO_AUTO_INIT_SUBMODULE: true
 
 on:
   push:

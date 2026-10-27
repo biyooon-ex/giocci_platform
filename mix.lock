@@ -25,5 +25,5 @@
   "toml": {:hex, :toml, "0.7.0", "fbcd773caa937d0c7a02c301a1feea25612720ac3fa1ccb8bfd9d30d822911de", [:mix], [], "hexpm", "0690246a2478c1defd100b0c9b89b4ea280a22be9a7b313a8a058a2408a2fa70"},
   "uf2tool": {:hex, :uf2tool, "1.1.0", "7091931234ca5a256b66ea691983867d51229798622d083f85c1ad779798a734", [:rebar3], [], "hexpm", "1a7e5ca7ef3d19c7a0b0acf3db804b3188e0980884acffa13fd57d733507b73d"},
   "zenohex": {:hex, :zenohex, "0.10.1", "c3d2c112ad85e8a52afcc121adad7e7924b27e6785f13a20c279be5087b3597c", [:mix], [{:rustler, "0.38.0", [hex: :rustler, repo: "hexpm", optional: true]}, {:rustler_precompiled, "~> 0.9.0", [hex: :rustler_precompiled, repo: "hexpm", optional: false]}, {:toml, "~> 0.7", [hex: :toml, repo: "hexpm", optional: false]}], "hexpm", "9b4a60e8ccc8f2f9f5aef77c065ce1cf4f3e62f3a6212fd135ea3ec16a49e723"},
-  "zenohex_pico": {:git, "https://github.com/biyooon-ex/zenohex_pico.git", "4836ef4dae039a342b8563febac1e44a77169474", [branch: "update"]},
+  "zenohex_pico": {:git, "https://github.com/biyooon-ex/zenohex_pico.git", "cf30b17f70bf3f08ca9e66281cd4b260fef19413", [branch: "update"]},
 }

@@ -1,4 +1,4 @@
-FROM hexpm/elixir:1.19.5-erlang-28.5-ubuntu-noble-20260410
+FROM hexpm/elixir:1.19.6-erlang-28.5.0.8-ubuntu-noble-20261024.1
 
 ARG TARGETARCH
 

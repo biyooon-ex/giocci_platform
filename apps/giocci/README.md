@@ -9,7 +9,7 @@ Add `giocci` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:giocci, "~> 0.6.3"}
+    {:giocci, "~> 0.6.4"}
   ]
 end
 ```

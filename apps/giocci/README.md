@@ -29,7 +29,7 @@ config :giocci,
 
 ### zenoh.json5
 
-See Zenoh [DEFAULT_CONFIG.json5](https://github.com/eclipse-zenoh/zenoh/blob/1.10.1/DEFAULT_CONFIG.json5) for detailed options.
+See Zenoh [DEFAULT_CONFIG.json5](https://github.com/eclipse-zenoh/zenoh/blob/1.10.2/DEFAULT_CONFIG.json5) for detailed options.
 
 ### Environment Variables
 

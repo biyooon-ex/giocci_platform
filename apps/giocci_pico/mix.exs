@@ -44,7 +44,7 @@ defmodule GiocciPico.MixProject do
     [
       {:exatomvm, github: "atomvm/exatomvm", runtime: false, override: true},
       {:atomvm, "~> 0.7.0-beta.0", optional: true, runtime: false},
-      {:zenohex_pico, git: "https://github.com/biyooon-ex/zenohex_pico.git", branch: "update"},
+      {:zenohex_pico, "== 0.1.0-alpha.2"},
       {:pythonx, "~> 0.4.0"}
     ]
   end

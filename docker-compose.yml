@@ -5,7 +5,7 @@ services:
       platforms:
         - "linux/amd64"
         - "linux/arm64"
-    image: ghcr.io/biyooon-ex/giocci_platform/zenohd:1.10.1
+    image: ghcr.io/biyooon-ex/giocci_platform/zenohd:1.10.2
     volumes:
       - .:/app
       # Avoid sharing platform-specific NIF/build artifacts with the host.

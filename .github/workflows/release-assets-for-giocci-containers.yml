@@ -25,8 +25,8 @@ jobs:
       - name: Build giocci_relay.zip
         shell: bash
         run: |
-          mkdir -p release_assets/giocci_relay
-          cp -R apps/giocci_relay/config release_assets/giocci_relay/
+          mkdir -p release_assets/giocci_relay/config
+          cp apps/giocci_relay/config/giocci_relay.exs apps/giocci_relay/config/zenoh.json5 release_assets/giocci_relay/config/
           cp apps/giocci_relay/docker-compose.yml release_assets/giocci_relay/
           cd release_assets/giocci_relay
           zip -r ../../giocci_relay.zip config docker-compose.yml
@@ -34,8 +34,8 @@ jobs:
       - name: Build giocci_engine.zip
         shell: bash
         run: |
-          mkdir -p release_assets/giocci_engine
-          cp -R apps/giocci_engine/config release_assets/giocci_engine/
+          mkdir -p release_assets/giocci_engine/config
+          cp apps/giocci_engine/config/giocci_engine.exs apps/giocci_engine/config/zenoh.json5 release_assets/giocci_engine/config/
           cp apps/giocci_engine/docker-compose.yml release_assets/giocci_engine/
           cd release_assets/giocci_engine
           zip -r ../../giocci_engine.zip config docker-compose.yml

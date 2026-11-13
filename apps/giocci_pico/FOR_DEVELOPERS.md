@@ -1,11 +1,11 @@
 # For developers
 
-## AtomVM がサポートしていない Elixir の機能について
+## Elixir features not supported by AtomVM
 
-AtomVM では以下の Elixir の機能がサポートされていないため、GiocciPico では代替実装をしています。
+GiocciPico provides alternative implementations because AtomVM does not support the following Elixir features:
 
-- `String` モジュール
-- `Enum` の `uniq`、`reverse` 関数
+- The `String` module
+- The `uniq` and `reverse` functions in `Enum`
 
-これらの機能は、今後の AtomVM の更新でサポートされる可能性があります。
-サポートされた場合は、GiocciPico の実装を Giocci と同等の実装に書き直してください。
+These features may be supported in a future AtomVM update.
+If they are supported, rewrite GiocciPico's implementation to match Giocci's.

@@ -18,9 +18,10 @@ defmodule GiocciPico.SessionManager do
   # callbacks
 
   def init(args) do
-    zenohex_pico_config = Keyword.fetch!(args, :zenohex_pico_config)
+    config = Keyword.fetch!(args, :zenohex_pico_config)
+    {:ok, config} = ZenohexPico.Config.insert(config, :mode, "client")
 
-    case ZenohexPico.Session.open(zenohex_pico_config) do
+    case ZenohexPico.Session.open(config) do
       {:ok, session} ->
         {:ok, %{session: session}}
 

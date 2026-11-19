@@ -18,15 +18,13 @@ defmodule GiocciPico.Sample.Test do
     :ok = connect_wifi(ssid, psk)
 
     # Prepare ZenohexPico
+    connect_to = "tcp/#{@zenohd_ipv4_address}:7447"
     {:ok, config} = ZenohexPico.Config.default()
-    {:ok, config} = ZenohexPico.Config.insert(config, :mode, "client")
-
-    {:ok, config} =
-      ZenohexPico.Config.insert(config, :connect, "tcp/#{@zenohd_ipv4_address}:7447")
+    {:ok, config} = ZenohexPico.Config.insert(config, :connect, connect_to)
 
     # Start GiocciPico.Supervisor
     {:ok, _pid} =
-      GiocciPico.Supervisor.start_link(
+      GiocciPico.start_link(
         zenohex_pico_config: config,
         client_name: @client_name,
         key_prefix: ""

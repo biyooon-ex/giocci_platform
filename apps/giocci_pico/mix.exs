@@ -25,6 +25,8 @@ defmodule GiocciPico.MixProject do
           "atomvm.esp32.flash --port /dev/ttyACM0 --baud 921600"
         ]
       ],
+      description: description(),
+      package: package(),
       docs: docs()
     ]
   end
@@ -45,9 +47,22 @@ defmodule GiocciPico.MixProject do
     [
       {:atomvm, "~> 0.7.0-beta.0", optional: true, runtime: false},
       {:ex_doc, "~> 0.34", only: :dev, runtime: false, warn_if_outdated: true},
-      {:exatomvm, github: "atomvm/exatomvm", runtime: false, override: true},
+      {:exatomvm, github: "atomvm/exatomvm", only: :dev, runtime: false, override: true},
       {:pythonx, "~> 0.4.0"},
       {:zenohex_pico, "== 0.1.0-alpha.3"}
+    ]
+  end
+
+  defp description do
+    "Client library for GiocciPlatform (resource-permeating computing platform for wide-area distributed systems)"
+  end
+
+  defp package do
+    [
+      # These are the default files included in the package
+      files: ~w(lib .formatter.exs mix.exs README* LICENSE*),
+      licenses: ["Apache-2.0"],
+      links: %{"GitHub" => "https://github.com/biyooon-ex/giocci_platform"}
     ]
   end
 

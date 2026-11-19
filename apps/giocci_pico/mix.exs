@@ -24,7 +24,8 @@ defmodule GiocciPico.MixProject do
           "atomvm.packbeam",
           "atomvm.esp32.flash --port /dev/ttyACM0 --baud 921600"
         ]
-      ]
+      ],
+      docs: docs()
     ]
   end
 
@@ -42,10 +43,18 @@ defmodule GiocciPico.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:exatomvm, github: "atomvm/exatomvm", runtime: false, override: true},
       {:atomvm, "~> 0.7.0-beta.0", optional: true, runtime: false},
-      {:zenohex_pico, "== 0.1.0-alpha.3"},
-      {:pythonx, "~> 0.4.0"}
+      {:ex_doc, "~> 0.34", only: :dev, runtime: false, warn_if_outdated: true},
+      {:exatomvm, github: "atomvm/exatomvm", runtime: false, override: true},
+      {:pythonx, "~> 0.4.0"},
+      {:zenohex_pico, "== 0.1.0-alpha.3"}
+    ]
+  end
+
+  defp docs do
+    [
+      extras: ["README.md"],
+      main: "readme"
     ]
   end
 end

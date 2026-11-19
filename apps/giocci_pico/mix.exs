@@ -4,7 +4,7 @@ defmodule GiocciPico.MixProject do
   def project do
     [
       app: :giocci_pico,
-      version: "0.1.0",
+      version: version(),
       build_path: "./_build",
       config_path: "./config/config.exs",
       deps_path: "./deps",
@@ -60,7 +60,7 @@ defmodule GiocciPico.MixProject do
   defp package do
     [
       # These are the default files included in the package
-      files: ~w(lib .formatter.exs mix.exs README* LICENSE*),
+      files: ~w(lib .formatter.exs mix.exs README* LICENSE* VERSIONS),
       licenses: ["Apache-2.0"],
       links: %{"GitHub" => "https://github.com/biyooon-ex/giocci_platform"}
     ]
@@ -71,5 +71,47 @@ defmodule GiocciPico.MixProject do
       extras: ["README.md"],
       main: "readme"
     ]
+  end
+
+  defp version do
+    local_versions = Path.join(__DIR__, "VERSIONS")
+    parent_versions = Path.join([__DIR__, "../..", "VERSIONS"])
+
+    read_version(local_versions) ||
+      read_version(parent_versions) ||
+      fallback_version(local_versions)
+  end
+
+  defp read_version(path) do
+    if File.exists?(path) do
+      path
+      |> File.read!()
+      |> String.split("\n")
+      |> Enum.find_value(fn
+        "PROJECT_VERSION=" <> version -> String.trim(version)
+        _ -> nil
+      end)
+    end
+  end
+
+  defp fallback_version(versions_path) do
+    if allow_missing_versions?() do
+      fallback_version = "0.0.0"
+
+      IO.warn(
+        "VERSIONS file not found at #{versions_path}; using fallback version #{fallback_version}"
+      )
+
+      fallback_version
+    else
+      raise("VERSIONS file not found at #{versions_path}")
+    end
+  end
+
+  defp allow_missing_versions? do
+    System.get_env("MIX_ALLOW_MISSING_VERSIONS") == "true" ||
+      System.get_env("DEPENDABOT") == "true" ||
+      (System.get_env("GITHUB_ACTIONS") == "true" &&
+         System.get_env("GITHUB_ACTOR") == "dependabot[bot]")
   end
 end

@@ -58,6 +58,8 @@ defmodule GiocciIntegrationTest.MixProject do
         Docker found - running tests in container\n
         """)
 
+        # Compose searches the current directory and its parents for a compose file.
+        # This finds the repository-root docker-compose.yml, where zenohd is a service.
         exit_code =
           Mix.shell().cmd({
             "docker",

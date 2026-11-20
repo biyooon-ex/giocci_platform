@@ -29,7 +29,7 @@ RUN case "${TARGETARCH}" in \
   esac \
   && ZENOH_ARCHIVE="zenoh-${ZENOH_VERSION}-${ZENOH_ARCH}-standalone.zip" \
   && apt-get update \
-  && apt-get install -y --no-install-recommends curl unzip ca-certificates \
+  && apt-get install -y --no-install-recommends curl unzip ca-certificates git build-essential cmake \
   && mkdir -p "${GIOCCI_ZENOH_HOME}" \
   && curl -fsSL "${ZENOH_URL}/${ZENOH_ARCHIVE}" -o "/tmp/${ZENOH_ARCHIVE}" \
   && echo "${ZENOH_SHA256}  /tmp/${ZENOH_ARCHIVE}" | sha256sum -c - \

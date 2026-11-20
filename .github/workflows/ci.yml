@@ -36,11 +36,6 @@ jobs:
           mix local.hex --force
           mix local.rebar --force
 
-      - name: Install git
-        run: |
-          apt-get update
-          apt-get install -y --no-install-recommends git build-essential cmake
-
       - name: Install dependencies
         run: mix deps.get
 

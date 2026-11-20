@@ -22,6 +22,9 @@ defmodule GiocciPico do
   @spec start_link([start_link_option()]) :: Supervisor.on_start()
   defdelegate start_link(opts), to: GiocciPico.Supervisor
 
+  @doc false
+  defdelegate child_spec(arg), to: GiocciPico.Supervisor
+
   @doc """
   Register this client to a relay.
 
